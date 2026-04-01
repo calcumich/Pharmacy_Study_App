@@ -1,0 +1,27 @@
+
+  Docker
+  - Docker Desktop must be running before any docker compose command will work
+  - docker compose up -d must be run before exec — containers don't exist until you start the stack
+  - Postgres Docker containers only initialize credentials on first run. If the volume already exists with different
+  credentials, docker compose down -v is needed to wipe and reinitialize
+  - After docker compose up -d, wait for pg_isready before running migrations — the container starts before Postgres is
+  ready
+
+  Running SQL migrations against a Docker Postgres
+  - \i in psql resolves paths inside the container, not on your host
+  - Use Get-Content file.sql | docker compose exec -T db psql ... to pipe host files in
+  - PowerShell doesn't support < for stdin redirection — use Get-Content ... | instead
+
+  Python packaging
+  - setuptools.backends.legacy:build requires setuptools ≥69; setuptools.build_meta is the safer, more compatible choice
+  - pip install --upgrade setuptools upgrades inside the venv, but pip's isolated build environment may still use the
+  system/conda setuptools — changing the backend is the real fix
+
+  Alembic / dotenv
+  - os.getenv() only reads shell environment variables — it won't pick up .env files without load_dotenv()
+  - load_dotenv() won't override variables already set in the shell — use load_dotenv(override=True) to ensure .env
+  always wins
+
+  Unresolved
+  - alembic stamp head still fails with InvalidPasswordError despite the password being correct and psql TCP connections
+   working — likely an asyncpg-specific issue worth investigating next session
