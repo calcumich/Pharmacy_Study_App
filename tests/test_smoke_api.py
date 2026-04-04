@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 
-client = TestClient(app)
+@pytest.fixture(scope="session")
+def client() -> TestClient:
+    with TestClient(app) as c:
+        yield c
 
 
 def _flatten_classes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -18,7 +22,9 @@ def _flatten_classes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return flat
 
 
-def _find_class_with_drugs(nodes: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
+def _find_class_with_drugs(
+    client: TestClient, nodes: list[dict[str, Any]]
+) -> tuple[str, list[dict[str, Any]]]:
     for node in _flatten_classes(nodes):
         response = client.get(f"/drug-classes/{node['id']}/drugs")
         assert response.status_code == 200
@@ -28,14 +34,14 @@ def _find_class_with_drugs(nodes: list[dict[str, Any]]) -> tuple[str, list[dict[
     raise AssertionError("Expected at least one seeded drug class with drugs")
 
 
-def test_healthcheck() -> None:
+def test_healthcheck(client: TestClient) -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-def test_seeded_attribute_types_are_available() -> None:
+def test_seeded_attribute_types_are_available(client: TestClient) -> None:
     response = client.get("/attribute-types")
 
     assert response.status_code == 200
@@ -45,23 +51,23 @@ def test_seeded_attribute_types_are_available() -> None:
     assert slugs == ["moa", "half_life", "indications", "adrs", "metabolism", "ddis"]
 
 
-def test_seeded_class_tree_and_drugs_are_available() -> None:
+def test_seeded_class_tree_and_drugs_are_available(client: TestClient) -> None:
     response = client.get("/drug-classes")
 
     assert response.status_code == 200
     classes = response.json()
     assert classes, "Expected seeded drug classes"
 
-    class_id, drugs = _find_class_with_drugs(classes)
+    class_id, drugs = _find_class_with_drugs(client, classes)
 
     assert class_id
     assert drugs, "Expected seeded drugs for at least one class"
     assert {"id", "name", "drug_class_id"} <= set(drugs[0].keys())
 
 
-def test_seeded_drug_detail_contains_attributes_and_lists() -> None:
+def test_seeded_drug_detail_contains_attributes_and_lists(client: TestClient) -> None:
     classes = client.get("/drug-classes").json()
-    _, drugs = _find_class_with_drugs(classes)
+    _, drugs = _find_class_with_drugs(client, classes)
     drug_id = drugs[0]["id"]
 
     response = client.get(f"/drugs/{drug_id}")
@@ -75,9 +81,9 @@ def test_seeded_drug_detail_contains_attributes_and_lists() -> None:
     assert isinstance(payload["metabolism"], list)
 
 
-def test_study_table_returns_cells_for_seeded_data() -> None:
+def test_study_table_returns_cells_for_seeded_data(client: TestClient) -> None:
     classes = client.get("/drug-classes").json()
-    _, drugs = _find_class_with_drugs(classes)
+    _, drugs = _find_class_with_drugs(client, classes)
     attribute_types = client.get("/attribute-types").json()
 
     params = [

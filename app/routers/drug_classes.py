@@ -20,7 +20,8 @@ async def list_drug_classes(db: AsyncSession = Depends(get_db)) -> list[DrugClas
 
     # Build tree from flat list — acceptable here because we load every node.
     by_id: dict[UUID, DrugClassNode] = {
-        c.id: DrugClassNode.model_validate(c) for c in all_classes
+        c.id: DrugClassNode(id=c.id, name=c.name, slug=c.slug, description=c.description)
+        for c in all_classes
     }
     roots: list[DrugClassNode] = []
     for c in all_classes:
