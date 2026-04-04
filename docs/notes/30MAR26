@@ -25,3 +25,33 @@
   Unresolved
   - alembic stamp head still fails with InvalidPasswordError despite the password being correct and psql TCP connections
    working — likely an asyncpg-specific issue worth investigating next session
+
+
+   Port 5432 is PostgreSQL's default port. When your machine boots, Anaconda's bundled PostgreSQL starts automatically as
+   a Windows service and binds to 0.0.0.0:5432 — meaning it claims that port on every network interface. It does this
+  before Docker even starts.
+
+  When you run docker compose up, Docker tries to forward host port 5432 into the container's port 5432. But Windows'
+  networking stack allows this to appear to succeed (both processes show up in netstat), while in practice the local
+  Anaconda postgres wins the race and gets actual TCP connections.
+
+  What happens when asyncpg connects
+
+  When alembic runs and asyncpg opens a connection to 127.0.0.1:5432, the OS routes that TCP connection to the Anaconda
+  PostgreSQL server — not the Docker container. That server has no knowledge of the app user or the pharmdb database. It
+   only knows about whatever was set up locally in Anaconda. So it rejects the credentials with password authentication
+  failed.
+
+  The Docker container was healthy and running fine — it just wasn't reachable on port 5432 from the host.
+
+  Why netstat showed two listeners
+
+  Docker Desktop on Windows uses a network proxy (the com.docker.backend process) to handle port forwarding between the
+  host and containers. That proxy also binds to 5432, which is why both PIDs showed up. But the Anaconda postgres
+  process got there first and handled the actual incoming connections.
+
+  Why the fix works
+
+  Changing Docker's mapping to 5433:5432 means: "forward host port 5433 to container port 5432." Port 5433 is free —
+  Anaconda's postgres isn't listening there — so Docker's proxy owns it unambiguously. Connections to 127.0.0.1:5433 go
+  straight to your Docker container with the right credentials, and everything works.

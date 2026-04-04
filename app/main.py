@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.models  # Ensure all ORM models are registered before route use.
 from app.routers import attribute_types, drug_classes, drugs, study
 
 app = FastAPI(

@@ -1,4 +1,4 @@
-.PHONY: db-up migrate stamp
+.PHONY: db-up db-migrate db-seed db-bootstrap db-reset
 
 # Start the Postgres container and wait until it is ready to accept connections.
 db-up:
@@ -7,17 +7,17 @@ db-up:
 	@until docker compose exec db pg_isready -U app -d pharmdb -q; do sleep 1; done
 	@echo "Postgres is ready."
 
-# Apply the three SQL migrations in order, then tell Alembic the schema is current.
-# Requires the DB to be running (run 'make db-up' first).
-# Pipe via -T so stdin is not a TTY, allowing file redirection to work correctly.
-migrate:
-	docker compose exec -T db psql -U app -d pharmdb < docs/db/migrations/001_core_schema.sql
-	docker compose exec -T db psql -U app -d pharmdb < docs/db/migrations/002_user_study.sql
-	docker compose exec -T db psql -U app -d pharmdb < docs/db/migrations/003_seed_attribute_types.sql
-	$(MAKE) stamp
+# Apply Alembic revisions to the running database.
+db-migrate:
+	alembic upgrade head
 
-# Mark the current DB schema as up-to-date in Alembic's version table.
-# Use this after applying migrations manually; run 'alembic upgrade head' for
-# future Alembic-managed revisions instead.
-stamp:
-	alembic stamp head
+# Seed starter drug/class data after migrations are applied.
+db-seed:
+	python scripts/seed_mock_data.py
+
+# Full local bootstrap path for a fresh database.
+db-bootstrap: db-up db-migrate db-seed
+
+# Remove the Postgres container and named volume for a truly clean local DB.
+db-reset:
+	docker compose down -v
