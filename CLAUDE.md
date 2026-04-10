@@ -1,8 +1,50 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Pharmacy Study App — Claude Code Context
 
 This is a spaced-repetition study tool for pharmacy students. Core concept: drugs have
 structured attributes (mechanism, indications, interactions, etc.) that get surfaced as
 flashcards. SRS state tracks per-user review history.
+
+## Commands
+
+### Backend
+
+```bash
+# Install dependencies (one-time / after pyproject.toml changes)
+pip install -e ".[dev]"
+
+# Run the dev server
+uvicorn app.main:app --reload
+
+# Run all tests
+pytest
+
+# Run a single test file
+pytest tests/test_unit_tree_builder.py
+
+# Run a single test by name
+pytest tests/test_unit_tree_builder.py::test_parent_child_nesting
+
+# Check that ORM models match the DB (should produce empty up/downgrade bodies)
+alembic revision --autogenerate -m "check"
+
+# Apply a new Alembic migration
+alembic upgrade head
+```
+
+Tests in `tests/test_smoke_api.py` hit the real database via `TestClient`; all other test files use `app.dependency_overrides` to mock the DB session — no live DB required.
+
+### Frontend
+
+```bash
+cd frontend
+npm install        # one-time / after package.json changes
+npm run dev        # Vite dev server at http://localhost:5173
+npm run build      # type-check + production build
+```
 
 ## Stack
 
@@ -150,7 +192,6 @@ Full rationale in `docs/schema.md`. Short version for quick reference:
 - **API client**: all API calls go through `src/api/index.ts`. Never call `fetch` directly from components.
 - **Types**: `src/types/api.ts` is the single source of truth for TypeScript shapes. Keep in sync with
   `app/schemas/` when the backend changes.
-- To run the frontend: `cd frontend && npm install && npm run dev`
 
 ## Out of scope — do not build until explicitly requested
 

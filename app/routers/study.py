@@ -1,14 +1,23 @@
+from datetime import datetime, timezone
 from uuid import UUID
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.drugs import AttributeType, Drug, DrugAdr, DrugIndication, DrugMetabolism
 from app.models.interactions import DrugInteraction
-from app.schemas.study import TableCell, TableResponse
+from app.models.study import SrsState, SrsCardState, StudySession
+from app.schemas.study import (
+    TableCell, TableResponse,
+    SessionCreate, SessionResponse,
+    ReviewRequest, ReviewResponse,
+    QueueItem, QueueResponse,
+)
+from app.services.fsrs import schedule as fsrs_schedule
 
 router = APIRouter(prefix="/study", tags=["study"])
 
@@ -122,4 +131,151 @@ async def get_table(
         drug_ids=drug_ids,
         attribute_type_ids=attribute_type_ids,
         cells=cells,
+    )
+
+
+# ── Sessions ──────────────────────────────────────────────────────────────────
+
+@router.post("/sessions", response_model=SessionResponse, status_code=201)
+async def create_session(
+    body: SessionCreate,
+    db: AsyncSession = Depends(get_db),
+) -> SessionResponse:
+    """
+    Start a study session.  Returns a session ID the client can attach to
+    subsequent review submissions for grouping / analytics.
+    """
+    session = StudySession(
+        user_id=body.user_id,
+        drug_ids_studied=[str(did) for did in body.drug_ids],
+        session_metadata={"mode": body.mode},
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+    return SessionResponse(session_id=session.id, started_at=session.started_at)
+
+
+# ── Reviews ───────────────────────────────────────────────────────────────────
+
+@router.post("/review", response_model=ReviewResponse, status_code=200)
+async def submit_review(
+    body: ReviewRequest,
+    db: AsyncSession = Depends(get_db),
+) -> ReviewResponse:
+    """
+    Record a flashcard rating and advance the FSRS schedule for the drug.
+
+    Loads the current srs_state row (if any), runs the FSRS-5 algorithm, then
+    upserts the result.  The SRS state is tracked per (user, drug); the
+    optional attribute_type_id is stored for context only.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Load existing state, if the user has reviewed this drug before.
+    result = await db.execute(
+        select(SrsState).where(
+            SrsState.user_id == body.user_id,
+            SrsState.drug_id == body.drug_id,
+        )
+    )
+    existing: Optional[SrsState] = result.scalar_one_or_none()
+
+    scheduled = fsrs_schedule(
+        stability=existing.stability if existing else None,
+        difficulty=existing.difficulty if existing else None,
+        state=existing.state if existing else SrsCardState.new,
+        review_count=existing.review_count if existing else 0,
+        last_review=existing.last_review if existing else None,
+        rating=body.rating,
+        now=now,
+    )
+
+    # Upsert — one row per (user_id, drug_id), updated on every review.
+    srs_data = scheduled.srs_data
+    if body.attribute_type_id is not None:
+        srs_data = {**srs_data, "attribute_type_id": str(body.attribute_type_id)}
+
+    stmt = (
+        pg_insert(SrsState)
+        .values(
+            user_id=body.user_id,
+            drug_id=body.drug_id,
+            stability=scheduled.stability,
+            difficulty=scheduled.difficulty,
+            state=scheduled.state,
+            due_date=scheduled.due_date,
+            last_review=scheduled.last_review,
+            review_count=scheduled.review_count,
+            srs_data=srs_data,
+        )
+        .on_conflict_do_update(
+            index_elements=["user_id", "drug_id"],
+            set_={
+                "stability":    scheduled.stability,
+                "difficulty":   scheduled.difficulty,
+                "state":        scheduled.state,
+                "due_date":     scheduled.due_date,
+                "last_review":  scheduled.last_review,
+                "review_count": scheduled.review_count,
+                "srs_data":     srs_data,
+                "updated_at":   now,
+            },
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+    return ReviewResponse(
+        drug_id=body.drug_id,
+        state=scheduled.state.value,
+        stability=scheduled.stability,
+        difficulty=scheduled.difficulty,
+        due_date=scheduled.due_date,
+        review_count=scheduled.review_count,
+    )
+
+
+# ── Queue ─────────────────────────────────────────────────────────────────────
+
+@router.get("/queue", response_model=QueueResponse)
+async def get_queue(
+    user_id: UUID,
+    drug_ids: Annotated[Optional[list[UUID]], Query()] = None,
+    limit: int = Query(default=20, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+) -> QueueResponse:
+    """
+    Return cards due for review, most overdue first.
+
+    A card is due when due_date <= now, or when due_date IS NULL (never
+    reviewed — treated as immediately due).  Pass drug_ids to restrict the
+    queue to a specific study set; omit to return across all studied drugs.
+    """
+    now = datetime.now(timezone.utc)
+
+    query = (
+        select(SrsState)
+        .where(
+            SrsState.user_id == user_id,
+            or_(SrsState.due_date <= now, SrsState.due_date.is_(None)),
+        )
+        .order_by(SrsState.due_date.asc().nulls_first())
+        .limit(limit)
+    )
+    if drug_ids:
+        query = query.where(SrsState.drug_id.in_(drug_ids))
+
+    rows = (await db.execute(query)).scalars().all()
+
+    return QueueResponse(
+        items=[
+            QueueItem(
+                drug_id=row.drug_id,
+                state=row.state.value,
+                stability=row.stability,
+                due_date=row.due_date,
+            )
+            for row in rows
+        ]
     )
