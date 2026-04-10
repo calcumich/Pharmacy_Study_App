@@ -82,12 +82,16 @@ app/
     drug_classes.py            ← DrugClassNode (Pydantic response schema)
     drugs.py                   ← DrugSummary, DrugDetail
     attribute_types.py         ← AttributeTypeResponse
-    study.py                   ← TableCell, TableResponse
+    study.py                   ← TableCell/Response, SessionCreate/Response,
+                                  ReviewRequest/Response, QueueItem/Response
+  services/
+    fsrs.py                    ← pure FSRS-5 algorithm (no DB/HTTP); call schedule()
   routers/
     drug_classes.py            ← GET /drug-classes, GET /drug-classes/{id}/drugs
     drugs.py                   ← GET /drugs/{id}
     attribute_types.py         ← GET /attribute-types
-    study.py                   ← GET /study/table
+    study.py                   ← GET /study/table, POST /study/sessions,
+                                  POST /study/review, GET /study/queue
 frontend/
   index.html
   vite.config.ts
@@ -193,13 +197,17 @@ Full rationale in `docs/schema.md`. Short version for quick reference:
 - **Types**: `src/types/api.ts` is the single source of truth for TypeScript shapes. Keep in sync with
   `app/schemas/` when the backend changes.
 
+## Roadmap
+
+Active work is tracked in `docs/plan.md`. Before starting any new feature, read
+that file to pick up the next open task and orient on what is already built.
+Update task status (`[ ]` → `[~]` → `[x]`) as you work.
+
 ## Out of scope — do not build until explicitly requested
 
 - Redis or any caching layer
 - Elasticsearch or external search index
-- SRS algorithm implementation (schema must be stable first)
-- Custom authentication
-- Write endpoints (POST/PATCH/DELETE) — read-only API so far
+- Custom authentication (Supabase Auth is the plan — see plan.md task 5)
 
 ## Updating this file
 
