@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getDrugClasses, getDrugsByClass, getAttributeTypes, getDrug, getTable } from './api';
+import { getDrugClasses, getDrugsByClass, getAttributeTypes, getDrug, getTable, createSession } from './api';
 import { ClassBrowser } from './components/ClassBrowser';
 import { DrugSelector } from './components/DrugSelector';
 import { AttributeSelector } from './components/AttributeSelector';
@@ -12,6 +12,9 @@ import type {
   DrugSummary,
   TableResponse,
 } from './types/api';
+
+// TODO: replace with identity from Supabase Auth context (task 5)
+const HARDCODED_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // ── Step type ─────────────────────────────────────────────────────────────────
 
@@ -79,6 +82,7 @@ export default function App() {
   // ── Study data ────────────────────────────────────────────────────────────
   const [tableData, setTableData] = useState<TableResponse | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,7 +145,13 @@ export default function App() {
         setTableData(data);
         setCards([]);
       } else {
-        // Flashcard: load all selected drug details, then build card list.
+        // Flashcard: create a session, then load drug details and build cards.
+        const session = await createSession({
+          user_id: HARDCODED_USER_ID,
+          drug_ids: drugIds,
+          mode: 'flashcard',
+        });
+        setSessionId(session.session_id);
         const details = await Promise.all(drugIds.map((id) => getDrug(id)));
         const ats = attributeTypes.filter((a) => atIds.includes(a.id));
         const newCards: Card[] = details.flatMap((drug) =>
@@ -227,7 +237,12 @@ export default function App() {
             />
           )}
           {studyMode === 'flashcard' && (
-            <FlashcardView cards={cards} onDone={reset} />
+            <FlashcardView
+              cards={cards}
+              sessionId={sessionId}
+              userId={HARDCODED_USER_ID}
+              onDone={reset}
+            />
           )}
         </div>
       )}

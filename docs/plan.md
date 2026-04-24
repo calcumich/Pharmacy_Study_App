@@ -53,9 +53,17 @@ appended to `tests/test_smoke_write.py` covering the conflict-preserve path and
 
 ## Phase 2 — Frontend wiring
 
-### [ ] 4. Wire frontend to real backend
+### [x] 4. Wire frontend to real backend
 
-**Goal:** Replace the static mock with live API calls. The app should work
+**Done:** `post<T>` helper + `createSession`, `submitReview`, `getQueue` added to
+`client.ts`. Six new TypeScript interfaces added to `types/api.ts`. Write functions
+re-exported from `index.ts` directly from the real client (mock has no write ops).
+`App.tsx` creates a session on flashcard study start and passes `sessionId`/`userId`
+to `FlashcardView`. `FlashcardView` shows Again/Hard/Good/Easy rating buttons after
+reveal; clicking a rating calls `POST /study/review` then advances the card. Skip
+button retained for pre-reveal navigation. `VITE_USE_MOCK=false`.
+
+**Goal (archived):** Replace the static mock with live API calls. The app should work
 end-to-end against a running backend.
 
 **Context:**

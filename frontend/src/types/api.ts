@@ -51,3 +51,47 @@ export interface TableResponse {
   attribute_type_ids: string[];
   cells: TableCell[];
 }
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+
+export interface SessionCreate {
+  user_id: string;
+  drug_ids: string[];
+  mode: 'flashcard' | 'table';
+}
+
+export interface SessionResponse {
+  session_id: string;
+  started_at: string;
+}
+
+// ── Reviews ───────────────────────────────────────────────────────────────────
+
+export interface ReviewRequest {
+  user_id: string;
+  drug_id: string;
+  rating: 1 | 2 | 3 | 4;
+  attribute_type_id?: string;
+}
+
+export interface ReviewResponse {
+  drug_id: string;
+  state: string;
+  stability: number;
+  difficulty: number;
+  due_date: string;
+  review_count: number;
+}
+
+// ── Queue ─────────────────────────────────────────────────────────────────────
+
+export interface QueueItem {
+  drug_id: string;
+  state: string;
+  stability: number | null;
+  due_date: string | null;
+}
+
+export interface QueueResponse {
+  items: QueueItem[];
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AttributeType, DrugDetail, InteractionEntry } from '../types/api';
+import { submitReview } from '../api';
 
 interface Card {
   drug: DrugDetail;
@@ -8,6 +9,8 @@ interface Card {
 
 interface Props {
   cards: Card[];
+  sessionId: string | null;
+  userId: string;
   onDone: () => void;
 }
 
@@ -69,9 +72,18 @@ function getCardContent(card: Card): unknown {
   return null;
 }
 
-export function FlashcardView({ cards, onDone }: Props) {
+const RATING_LABELS: Record<number, string> = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+const RATING_STYLES: Record<number, string> = {
+  1: 'border-red-700 bg-red-900/40 hover:bg-red-800/60 text-red-200',
+  2: 'border-yellow-700 bg-yellow-900/40 hover:bg-yellow-800/60 text-yellow-200',
+  3: 'border-green-700 bg-green-900/40 hover:bg-green-800/60 text-green-200',
+  4: 'border-blue-600 bg-blue-900/40 hover:bg-blue-800/60 text-blue-200',
+};
+
+export function FlashcardView({ cards, userId, onDone }: Props) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (cards.length === 0) {
     return (
@@ -101,6 +113,24 @@ export function FlashcardView({ cards, onDone }: Props) {
     if (index > 0) {
       setIndex((i) => i - 1);
       setRevealed(false);
+    }
+  }
+
+  async function rate(rating: 1 | 2 | 3 | 4) {
+    const card = cards[index];
+    setSubmitting(true);
+    try {
+      await submitReview({
+        user_id: userId,
+        drug_id: card.drug.id,
+        attribute_type_id: card.attributeType.id,
+        rating,
+      });
+    } catch (err) {
+      console.error('Review submission failed:', err);
+    } finally {
+      setSubmitting(false);
+      next();
     }
   }
 
@@ -137,9 +167,23 @@ export function FlashcardView({ cards, onDone }: Props) {
               Show answer
             </button>
           ) : (
-            <div className="mt-8 pt-6 border-t border-gray-700 text-left">
-              {renderContent(content, card.attributeType.shape)}
-            </div>
+            <>
+              <div className="mt-8 pt-6 border-t border-gray-700 text-left">
+                {renderContent(content, card.attributeType.shape)}
+              </div>
+              <div className="flex gap-2 justify-center mt-6">
+                {([1, 2, 3, 4] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => rate(r)}
+                    disabled={submitting}
+                    className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${RATING_STYLES[r]}`}
+                  >
+                    {RATING_LABELS[r]}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -153,12 +197,15 @@ export function FlashcardView({ cards, onDone }: Props) {
         >
           ← Prev
         </button>
-        <button
-          onClick={next}
-          className="px-5 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors"
-        >
-          {index + 1 >= cards.length ? 'Finish' : 'Next →'}
-        </button>
+        {/* Next/Finish only shown before the answer is revealed (skip without rating) */}
+        {!revealed && (
+          <button
+            onClick={next}
+            className="px-5 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors"
+          >
+            {index + 1 >= cards.length ? 'Finish' : 'Skip →'}
+          </button>
+        )}
       </div>
 
       <button onClick={onDone} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">

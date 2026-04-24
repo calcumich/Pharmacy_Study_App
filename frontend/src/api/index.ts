@@ -14,3 +14,6 @@ export const getDrugsByClass = api.getDrugsByClass;
 export const getAttributeTypes = api.getAttributeTypes;
 export const getDrug = api.getDrug;
 export const getTable = api.getTable;
+
+// Write functions always use the real client (mock has no write operations).
+export { createSession, submitReview, getQueue } from './client';
