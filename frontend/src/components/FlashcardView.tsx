@@ -10,7 +10,6 @@ interface Card {
 interface Props {
   cards: Card[];
   sessionId: string | null;
-  userId: string;
   onDone: () => void;
 }
 
@@ -80,7 +79,7 @@ const RATING_STYLES: Record<number, string> = {
   4: 'border-blue-600 bg-blue-900/40 hover:bg-blue-800/60 text-blue-200',
 };
 
-export function FlashcardView({ cards, userId, onDone }: Props) {
+export function FlashcardView({ cards, onDone }: Props) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -121,7 +120,6 @@ export function FlashcardView({ cards, userId, onDone }: Props) {
     setSubmitting(true);
     try {
       await submitReview({
-        user_id: userId,
         drug_id: card.drug.id,
         attribute_type_id: card.attributeType.id,
         rating,

@@ -55,7 +55,6 @@ export interface TableResponse {
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
 export interface SessionCreate {
-  user_id: string;
   drug_ids: string[];
   mode: 'flashcard' | 'table';
 }
@@ -68,7 +67,6 @@ export interface SessionResponse {
 // ── Reviews ───────────────────────────────────────────────────────────────────
 
 export interface ReviewRequest {
-  user_id: string;
   drug_id: string;
   rating: 1 | 2 | 3 | 4;
   attribute_type_id?: string;

@@ -111,9 +111,16 @@ end-to-end against a running backend.
 
 ## Phase 3 — Auth
 
-### [ ] 5. Auth groundwork (Supabase JWT)
+### [x] 5. Auth groundwork (Supabase JWT)
 
-**Goal:** Replace the `user_id` request-body field with a proper JWT dependency so
+**Done:** `app/dependencies/auth.py` created with `get_current_user` that decodes
+Supabase HS256 JWTs via `python-jose`. `user_id` removed from `SessionCreate`,
+`ReviewRequest`, and `FlashcardStateUpdate` schemas. All four write/queue endpoints
+now use `Depends(get_current_user)`. Tests use `app.dependency_overrides` in
+`conftest.py` — no real JWT needed in tests. `SUPABASE_JWT_SECRET` env var required
+in production; defaults to `""` in development (deploy will 401 without it set).
+
+**Goal (archived):** Replace the `user_id` request-body field with a proper JWT dependency so
 every user-scoped endpoint authenticates automatically.
 
 **Context:**
@@ -147,12 +154,81 @@ every user-scoped endpoint authenticates automatically.
 
 ---
 
+### [x] 6. Frontend: Wire Supabase Auth
+
+**Done:** `@supabase/supabase-js` installed. `src/lib/supabase.ts` initialises the
+client from `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`. `client.ts` gained a
+module-level `_token` variable + `setAuthToken()` export; both `get<T>` and `post<T>`
+attach `Authorization: Bearer` when the token is set; `getQueue` no longer sends a
+`user_id` query param. `SessionCreate` and `ReviewRequest` in `types/api.ts` had
+`user_id` removed (backend reads identity from JWT sub claim). `App.tsx` replaced
+`HARDCODED_USER_ID` with Supabase session state — shows a loading screen on init,
+a login form when unauthenticated, and the main app once logged in; mock mode bypasses
+the auth gate entirely. `FlashcardView` dropped the `userId` prop and the stale
+`user_id` field in `submitReview`. `frontend/.env.example` created; `frontend/.env`
+updated with placeholder Supabase vars. Missing `src/vite-env.d.ts` created to fix
+pre-existing `import.meta.env` type errors; build is clean.
+
+**Goal:** Replace `HARDCODED_USER_ID` in the frontend with a real Supabase session,
+attach `Authorization: Bearer <token>` to every API call, and show a login screen
+when no session exists.
+
+**Context:**
+- Task 5 wired backend JWT validation — the backend now reads `user_id` from the JWT
+  `sub` claim, not from request bodies. `user_id` was removed from `SessionCreate`,
+  `ReviewRequest`, `FlashcardStateUpdate`, and the `GET /study/queue` query param.
+- `frontend/src/types/api.ts` is stale: `SessionCreate` and `ReviewRequest` still
+  carry a `user_id` field that the backend no longer accepts.
+- `App.tsx:17` has `const HARDCODED_USER_ID = '...'` passed to `createSession` and
+  forwarded as a prop to `FlashcardView`.
+- `FlashcardView.tsx:83` accepts `userId: string` as a prop and passes it to
+  `submitReview` — this field is now redundant.
+- `client.ts` `get<T>` and `post<T>` helpers don't attach any `Authorization` header.
+- `client.ts:getQueue` passes `user_id` as a query param — backend now ignores it,
+  so the param should be removed from the call.
+- Do not implement custom auth. No backend changes.
+
+**Steps:**
+1. `npm install @supabase/supabase-js` — add to `frontend/package.json`.
+2. Create `frontend/src/lib/supabase.ts`:
+   - Initialise `createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)` and export
+     as `supabase`.
+3. Update `frontend/src/api/client.ts`:
+   - Add `let _token: string | null = null` and `export function setAuthToken(t: string | null)`.
+   - In `get<T>`: add `Authorization: Bearer ${_token}` header when `_token` is set.
+   - In `post<T>`: same.
+   - Remove `userId: string` param from `getQueue`; drop the `user_id` query param.
+4. Update `frontend/src/types/api.ts`:
+   - Remove `user_id` from `SessionCreate` and `ReviewRequest`.
+5. Update `frontend/src/App.tsx`:
+   - Add `session: Session | null` state (from `@supabase/supabase-js`).
+   - On mount, call `supabase.auth.getSession()` to restore an existing session and
+     subscribe to `supabase.auth.onAuthStateChange`; on each change call
+     `setAuthToken(session?.access_token ?? null)` and update `session` state.
+   - Render a centered email/password login form (call
+     `supabase.auth.signInWithPassword`) when `session === null`.
+   - Remove `HARDCODED_USER_ID`; remove `user_id` from the `createSession` call.
+   - Remove `userId` prop from `<FlashcardView>`.
+6. Update `frontend/src/components/FlashcardView.tsx`:
+   - Remove `userId` from `Props`.
+   - Remove `user_id` from the `submitReview` call.
+7. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `frontend/.env.example`
+   (create the file) and to `frontend/.env` as placeholders.
+
+**Files to touch:** `frontend/package.json`, `frontend/src/lib/supabase.ts` (new),
+`frontend/src/api/client.ts`, `frontend/src/types/api.ts`,
+`frontend/src/App.tsx`, `frontend/src/components/FlashcardView.tsx`,
+`frontend/.env.example` (new), `frontend/.env`.
+
+---
+
 ## Phase 4 — Quality of life
 
-### [ ] 6. Drug search endpoint
+### [ ] 7. Drug search endpoint
 
 **Goal:** `GET /drugs/search?q=` — full-text search backed by the existing
 `tsvector` index on `drugs.search_vector`.
+
 
 **Context:**
 - The `search_vector` column is maintained by a DB trigger (see `docs/schema.md`).
@@ -174,7 +250,7 @@ every user-scoped endpoint authenticates automatically.
 
 ---
 
-### [ ] 7. Session close endpoint
+### [ ] 8. Session close endpoint
 
 **Goal:** `PATCH /study/sessions/{session_id}/end` — sets `ended_at` to mark a
 session complete.
@@ -197,7 +273,7 @@ session complete.
 
 ---
 
-### [ ] 8. Per-user FSRS weights
+### [ ] 9. Per-user FSRS weights
 
 **Goal:** Allow each user to have personalised FSRS weights rather than always
 using `DEFAULT_W`.

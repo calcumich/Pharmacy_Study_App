@@ -13,16 +13,23 @@ import type {
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
+let _token: string | null = null;
+export function setAuthToken(t: string | null): void { _token = t; }
+
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const headers: Record<string, string> = {};
+  if (_token) headers['Authorization'] = `Bearer ${_token}`;
+  const res = await fetch(`${BASE}${path}`, { headers });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
   return res.json() as Promise<T>;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (_token) headers['Authorization'] = `Bearer ${_token}`;
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
@@ -64,11 +71,10 @@ export async function submitReview(body: ReviewRequest): Promise<ReviewResponse>
 }
 
 export async function getQueue(
-  userId: string,
   drugIds?: string[],
   limit?: number,
 ): Promise<QueueResponse> {
-  const params = new URLSearchParams({ user_id: userId });
+  const params = new URLSearchParams();
   drugIds?.forEach((id) => params.append('drug_ids', id));
   if (limit !== undefined) params.set('limit', String(limit));
   return get<QueueResponse>(`/study/queue?${params.toString()}`);

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { getDrugClasses, getDrugsByClass, getAttributeTypes, getDrug, getTable, createSession } from './api';
+import { setAuthToken } from './api/client';
+import { supabase } from './lib/supabase';
 import { ClassBrowser } from './components/ClassBrowser';
 import { DrugSelector } from './components/DrugSelector';
 import { AttributeSelector } from './components/AttributeSelector';
@@ -12,9 +15,6 @@ import type {
   DrugSummary,
   TableResponse,
 } from './types/api';
-
-// TODO: replace with identity from Supabase Auth context (task 5)
-const HARDCODED_USER_ID = '00000000-0000-0000-0000-000000000001';
 
 // ── Step type ─────────────────────────────────────────────────────────────────
 
@@ -61,9 +61,69 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
+// ── Login form ────────────────────────────────────────────────────────────────
+
+function LoginForm() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setError(error.message);
+    setLoading(false);
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <div className="w-full max-w-sm space-y-6">
+        <div className="text-center">
+          <p className="text-4xl mb-3">💊</p>
+          <h1 className="text-xl font-bold">Pharmacy Study App</h1>
+          <p className="text-sm text-gray-500 mt-1">Sign in to continue</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors"
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
+  // ── Auth state ────────────────────────────────────────────────────────────
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   // ── Data loaded once ──────────────────────────────────────────────────────
   const [classes, setClasses] = useState<DrugClassNode[]>([]);
   const [attributeTypes, setAttributeTypes] = useState<AttributeType[]>([]);
@@ -86,7 +146,24 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Bootstrap ─────────────────────────────────────────────────────────────
+  // ── Auth bootstrap ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const useMock = import.meta.env.VITE_USE_MOCK === 'true';
+    if (useMock) { setAuthLoading(false); return; }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthToken(session?.access_token ?? null);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthToken(session?.access_token ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── Data bootstrap ────────────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([getDrugClasses(), getAttributeTypes()])
       .then(([c, a]) => {
@@ -147,7 +224,6 @@ export default function App() {
       } else {
         // Flashcard: create a session, then load drug details and build cards.
         const session = await createSession({
-          user_id: HARDCODED_USER_ID,
           drug_ids: drugIds,
           mode: 'flashcard',
         });
@@ -178,9 +254,22 @@ export default function App() {
     setCards([]);
   }
 
+  // ── Auth gates ────────────────────────────────────────────────────────────
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <p className="text-gray-500 text-sm animate-pulse">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!session && import.meta.env.VITE_USE_MOCK !== 'true') {
+    return <LoginForm />;
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const canProceedToDrugs = selectedClassId !== null && drugs.length > 0;
   const canStartStudy = selectedDrugIds.size > 0 && selectedAtIds.size > 0;
 
   return (
@@ -193,11 +282,21 @@ export default function App() {
           </h1>
           <p className="text-xs text-gray-500">Spaced-repetition for pharmacy students</p>
         </div>
-        {import.meta.env.VITE_USE_MOCK === 'true' && (
-          <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-900/50 border border-yellow-700 text-yellow-400 font-mono">
-            mock data
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {import.meta.env.VITE_USE_MOCK === 'true' && (
+            <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-900/50 border border-yellow-700 text-yellow-400 font-mono">
+              mock data
+            </span>
+          )}
+          {session && (
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Sign out
+            </button>
+          )}
+        </div>
       </header>
 
       {step !== 'study' && (
@@ -240,7 +339,6 @@ export default function App() {
             <FlashcardView
               cards={cards}
               sessionId={sessionId}
-              userId={HARDCODED_USER_ID}
               onDone={reset}
             />
           )}
