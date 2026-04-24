@@ -6,6 +6,9 @@ These checks cover the parts of the app that are not exercised by the backend sm
 
 - The local database was reset and bootstrapped successfully.
 - The backend can connect to the seeded database via `.env`.
+- If `VITE_USE_MOCK=false`, the repo-root `.env` includes `SUPABASE_URL` set to
+  the project base URL (for example, `https://your-project.supabase.co`).
+- `SUPABASE_JWT_SECRET` is only required for legacy HS256 Supabase projects.
 - Node modules are installed in [`frontend/`](/C:/Users/felze/source/repos/PharmacyStudyApp/frontend).
 
 ## 1. Start the backend
@@ -28,11 +31,14 @@ Create `frontend/.env.local` with:
 ```env
 VITE_USE_MOCK=false
 VITE_API_BASE_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_PUBLISHABLE_KEY=your-anon-key-here
 ```
 
 Expected result:
 
 - The frontend uses the backend instead of `frontend/src/api/mock.ts`.
+- Supabase login uses the project base URL, not the `/rest/v1` endpoint.
 
 ## 3. Start the frontend
 
