@@ -157,7 +157,7 @@ every user-scoped endpoint authenticates automatically.
 ### [x] 6. Frontend: Wire Supabase Auth
 
 **Done:** `@supabase/supabase-js` installed. `src/lib/supabase.ts` initialises the
-client from `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`. `client.ts` gained a
+client from `VITE_SUPABASE_URL`/`VITE_PUBLISHABLE_KEY`. `client.ts` gained a
 module-level `_token` variable + `setAuthToken()` export; both `get<T>` and `post<T>`
 attach `Authorization: Bearer` when the token is set; `getQueue` no longer sends a
 `user_id` query param. `SessionCreate` and `ReviewRequest` in `types/api.ts` had
@@ -191,7 +191,7 @@ when no session exists.
 **Steps:**
 1. `npm install @supabase/supabase-js` — add to `frontend/package.json`.
 2. Create `frontend/src/lib/supabase.ts`:
-   - Initialise `createClient(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)` and export
+   - Initialise `createClient(VITE_SUPABASE_URL, VITE_PUBLISHABLE_KEY)` and export
      as `supabase`.
 3. Update `frontend/src/api/client.ts`:
    - Add `let _token: string | null = null` and `export function setAuthToken(t: string | null)`.
@@ -212,7 +212,7 @@ when no session exists.
 6. Update `frontend/src/components/FlashcardView.tsx`:
    - Remove `userId` from `Props`.
    - Remove `user_id` from the `submitReview` call.
-7. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `frontend/.env.example`
+7. Add `VITE_SUPABASE_URL` and `VITE_PUBLISHABLE_KEY` to `frontend/.env.example`
    (create the file) and to `frontend/.env` as placeholders.
 
 **Files to touch:** `frontend/package.json`, `frontend/src/lib/supabase.ts` (new),
