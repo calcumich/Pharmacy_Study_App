@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.db.session import get_db
+from app.dependencies.auth import get_current_user
 from app.main import app
 from app.models.study import FlashcardState
 
@@ -74,9 +75,11 @@ def _db_override(refetch_row: FlashcardState):
 # ── fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture(autouse=True)
-def clear_overrides():
+def setup_overrides():
+    app.dependency_overrides[get_current_user] = lambda: TEST_USER_ID
     yield
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides.pop(get_db, None)
 
 
 # ── tests ─────────────────────────────────────────────────────────────────────
@@ -88,7 +91,7 @@ def test_patch_creates_new_state() -> None:
     with TestClient(app) as client:
         resp = client.patch(
             f"/study/flashcard-state/{TEST_DRUG_ID}/{TEST_ATTR_ID}",
-            json={"user_id": str(TEST_USER_ID), "is_buried": True},
+            json={"is_buried": True},
         )
 
     assert resp.status_code == 201
@@ -108,7 +111,7 @@ def test_patch_with_all_none_fields_succeeds() -> None:
     with TestClient(app) as client:
         resp = client.patch(
             f"/study/flashcard-state/{TEST_DRUG_ID}/{TEST_ATTR_ID}",
-            json={"user_id": str(TEST_USER_ID)},
+            json={},
         )
 
     assert resp.status_code == 201

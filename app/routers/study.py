@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.dependencies.auth import get_current_user
 from app.models.drugs import AttributeType, Drug, DrugAdr, DrugIndication, DrugMetabolism
 from app.models.interactions import DrugInteraction
 from app.models.study import FlashcardState, SrsCardState, SrsState, StudySession
@@ -140,6 +141,7 @@ async def get_table(
 @router.post("/sessions", response_model=SessionResponse, status_code=201)
 async def create_session(
     body: SessionCreate,
+    user_id: UUID = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SessionResponse:
     """
@@ -147,7 +149,7 @@ async def create_session(
     subsequent review submissions for grouping / analytics.
     """
     session = StudySession(
-        user_id=body.user_id,
+        user_id=user_id,
         drug_ids_studied=[str(did) for did in body.drug_ids],
         session_metadata={"mode": body.mode},
     )
@@ -162,6 +164,7 @@ async def create_session(
 @router.post("/review", response_model=ReviewResponse, status_code=200)
 async def submit_review(
     body: ReviewRequest,
+    user_id: UUID = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ReviewResponse:
     """
@@ -176,7 +179,7 @@ async def submit_review(
     # Load existing state, if the user has reviewed this drug before.
     result = await db.execute(
         select(SrsState).where(
-            SrsState.user_id == body.user_id,
+            SrsState.user_id == user_id,
             SrsState.drug_id == body.drug_id,
         )
     )
@@ -200,7 +203,7 @@ async def submit_review(
     stmt = (
         pg_insert(SrsState)
         .values(
-            user_id=body.user_id,
+            user_id=user_id,
             drug_id=body.drug_id,
             stability=scheduled.stability,
             difficulty=scheduled.difficulty,
@@ -241,7 +244,7 @@ async def submit_review(
 
 @router.get("/queue", response_model=QueueResponse)
 async def get_queue(
-    user_id: UUID,
+    user_id: UUID = Depends(get_current_user),
     drug_ids: Annotated[Optional[list[UUID]], Query()] = None,
     limit: int = Query(default=20, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -303,6 +306,7 @@ async def patch_flashcard_state(
     drug_id: UUID,
     attribute_type_id: UUID,
     body: FlashcardStateUpdate,
+    user_id: UUID = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> FlashcardStateResponse:
     """
@@ -325,7 +329,7 @@ async def patch_flashcard_state(
     stmt = (
         pg_insert(FlashcardState)
         .values(
-            user_id=body.user_id,
+            user_id=user_id,
             drug_id=drug_id,
             attribute_type_id=attribute_type_id,
             is_buried=body.is_buried if body.is_buried is not None else False,
@@ -345,7 +349,7 @@ async def patch_flashcard_state(
     # left some fields unchanged that are not in update_fields).
     row = (await db.execute(
         select(FlashcardState).where(
-            FlashcardState.user_id == body.user_id,
+            FlashcardState.user_id == user_id,
             FlashcardState.drug_id == drug_id,
             FlashcardState.attribute_type_id == attribute_type_id,
         )

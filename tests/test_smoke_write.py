@@ -6,7 +6,7 @@ Smoke tests for write endpoints:
   PATCH /study/flashcard-state
 
 These tests hit the real database (DATABASE_URL must be set).
-A fixed TEST_USER_ID is used so rows don't collide across runs.
+Auth is provided via app.dependency_overrides[get_current_user] in conftest.py.
 """
 from __future__ import annotations
 
@@ -15,9 +15,6 @@ from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
-
-# Fixed UUID so rows are isolated from other users and reproducible across runs.
-TEST_USER_ID = "00000000-dead-beef-0000-000000000001"
 
 
 # ---------------------------------------------------------------------------
@@ -70,7 +67,7 @@ def test_create_session_returns_id(client: TestClient) -> None:
 
     resp = client.post(
         "/study/sessions",
-        json={"user_id": TEST_USER_ID, "drug_ids": [drug_id], "mode": "flashcard"},
+        json={"drug_ids": [drug_id], "mode": "flashcard"},
     )
 
     assert resp.status_code == 201
@@ -86,7 +83,7 @@ def test_review_new_card(client: TestClient) -> None:
 
     resp = client.post(
         "/study/review",
-        json={"user_id": TEST_USER_ID, "drug_id": drug_id, "rating": 3},
+        json={"drug_id": drug_id, "rating": 3},
     )
 
     assert resp.status_code == 200
@@ -103,7 +100,7 @@ def test_review_upserts_not_inserts(client: TestClient) -> None:
     # First review
     r1 = client.post(
         "/study/review",
-        json={"user_id": TEST_USER_ID, "drug_id": drug_id, "rating": 3},
+        json={"drug_id": drug_id, "rating": 3},
     )
     assert r1.status_code == 200
     count_after_first = r1.json()["review_count"]
@@ -111,7 +108,7 @@ def test_review_upserts_not_inserts(client: TestClient) -> None:
     # Second review for the same (user, drug) — must trigger ON CONFLICT UPDATE
     r2 = client.post(
         "/study/review",
-        json={"user_id": TEST_USER_ID, "drug_id": drug_id, "rating": 3},
+        json={"drug_id": drug_id, "rating": 3},
     )
     assert r2.status_code == 200
     count_after_second = r2.json()["review_count"]
@@ -127,11 +124,11 @@ def test_review_again_then_queue(client: TestClient) -> None:
     # rating=1 (Again) keeps the card due immediately
     r = client.post(
         "/study/review",
-        json={"user_id": TEST_USER_ID, "drug_id": drug_id, "rating": 1},
+        json={"drug_id": drug_id, "rating": 1},
     )
     assert r.status_code == 200
 
-    resp = client.get("/study/queue", params={"user_id": TEST_USER_ID})
+    resp = client.get("/study/queue")
     assert resp.status_code == 200
     drug_ids_in_queue = [item["drug_id"] for item in resp.json()["items"]]
     assert drug_id in drug_ids_in_queue, (
@@ -145,14 +142,14 @@ def test_queue_respects_drug_ids_filter(client: TestClient) -> None:
     for drug_id in (drug_a, drug_b):
         r = client.post(
             "/study/review",
-            json={"user_id": TEST_USER_ID, "drug_id": drug_id, "rating": 1},
+            json={"drug_id": drug_id, "rating": 1},
         )
         assert r.status_code == 200
 
     # Filter queue to drug_a only
     resp = client.get(
         "/study/queue",
-        params={"user_id": TEST_USER_ID, "drug_ids": drug_a},
+        params={"drug_ids": drug_a},
     )
     assert resp.status_code == 200
     returned_ids = [item["drug_id"] for item in resp.json()["items"]]
@@ -166,10 +163,16 @@ def test_flashcard_state_conflict_update_preserves_unchanged_fields(client: Test
     drug_id = _first_drug_id(client)
     attr_id = _first_attribute_type_id(client)
 
+    # Reset to a known baseline before testing conflict-update semantics.
+    client.patch(
+        f"/study/flashcard-state/{drug_id}/{attr_id}",
+        json={"is_buried": False, "is_flagged": False, "user_note": None},
+    )
+
     # First patch: bury the card.
     r1 = client.patch(
         f"/study/flashcard-state/{drug_id}/{attr_id}",
-        json={"user_id": TEST_USER_ID, "is_buried": True},
+        json={"is_buried": True},
     )
     assert r1.status_code == 201
     assert r1.json()["is_buried"] is True
@@ -178,7 +181,7 @@ def test_flashcard_state_conflict_update_preserves_unchanged_fields(client: Test
     # Second patch: flag the card only (is_buried omitted / None).
     r2 = client.patch(
         f"/study/flashcard-state/{drug_id}/{attr_id}",
-        json={"user_id": TEST_USER_ID, "is_flagged": True},
+        json={"is_flagged": True},
     )
     assert r2.status_code == 201
     assert r2.json()["is_buried"] is True, (
@@ -193,7 +196,7 @@ def test_flashcard_state_user_note(client: TestClient) -> None:
 
     resp = client.patch(
         f"/study/flashcard-state/{drug_id}/{attr_id}",
-        json={"user_id": TEST_USER_ID, "user_note": "review this mechanism"},
+        json={"user_note": "review this mechanism"},
     )
     assert resp.status_code == 201
     assert resp.json()["user_note"] == "review this mechanism"

@@ -25,11 +25,6 @@ class TableResponse(BaseModel):
 # ── Sessions ──────────────────────────────────────────────────────────────────
 
 class SessionCreate(BaseModel):
-    # TODO: Replace user_id with the identity derived from the Supabase Auth
-    # JWT once auth is wired up.  At that point this field should be removed
-    # and user_id should be extracted from the request headers in a FastAPI
-    # dependency (e.g. `get_current_user`).
-    user_id: UUID
     drug_ids: list[UUID]
     mode: Literal["flashcard", "table"]
 
@@ -42,11 +37,6 @@ class SessionResponse(BaseModel):
 # ── Flashcard reviews ─────────────────────────────────────────────────────────
 
 class ReviewRequest(BaseModel):
-    # TODO: Replace user_id with the identity derived from the Supabase Auth
-    # JWT once auth is wired up.  At that point this field should be removed
-    # and user_id should be extracted from the request headers in a FastAPI
-    # dependency (e.g. `get_current_user`).
-    user_id: UUID
     drug_id: UUID
     rating: int = Field(..., ge=1, le=4, description="1=Again 2=Hard 3=Good 4=Easy")
     # Which attribute the user was viewing when they rated.  Stored for
@@ -80,8 +70,6 @@ class QueueResponse(BaseModel):
 # ── Flashcard state (bury / flag / annotate) ──────────────────────────────────
 
 class FlashcardStateUpdate(BaseModel):
-    # TODO: Replace user_id with Depends(get_current_user) once auth lands (task 5).
-    user_id: UUID
     is_buried: Optional[bool] = None
     is_flagged: Optional[bool] = None
     user_note: Optional[str] = None
