@@ -1,8 +1,9 @@
 """
-Smoke tests for the three write endpoints:
+Smoke tests for write endpoints:
   POST /study/sessions
   POST /study/review
   GET  /study/queue
+  PATCH /study/flashcard-state
 
 These tests hit the real database (DATABASE_URL must be set).
 A fixed TEST_USER_ID is used so rows don't collide across runs.
@@ -30,6 +31,13 @@ def _first_drug_id(client: TestClient) -> str:
         if drugs:
             return drugs[0]["id"]
     raise AssertionError("No seeded drug found")
+
+
+def _first_attribute_type_id(client: TestClient) -> str:
+    attr_types = client.get("/attribute-types").json()
+    if not attr_types:
+        raise AssertionError("No seeded attribute types found")
+    return attr_types[0]["id"]
 
 
 def _two_drug_ids(client: TestClient) -> tuple[str, str]:
@@ -152,3 +160,40 @@ def test_queue_respects_drug_ids_filter(client: TestClient) -> None:
     assert drug_b not in returned_ids, (
         "Queue with drug_ids filter must exclude drugs not in the filter list"
     )
+
+
+def test_flashcard_state_conflict_update_preserves_unchanged_fields(client: TestClient) -> None:
+    drug_id = _first_drug_id(client)
+    attr_id = _first_attribute_type_id(client)
+
+    # First patch: bury the card.
+    r1 = client.patch(
+        f"/study/flashcard-state/{drug_id}/{attr_id}",
+        json={"user_id": TEST_USER_ID, "is_buried": True},
+    )
+    assert r1.status_code == 201
+    assert r1.json()["is_buried"] is True
+    assert r1.json()["is_flagged"] is False
+
+    # Second patch: flag the card only (is_buried omitted / None).
+    r2 = client.patch(
+        f"/study/flashcard-state/{drug_id}/{attr_id}",
+        json={"user_id": TEST_USER_ID, "is_flagged": True},
+    )
+    assert r2.status_code == 201
+    assert r2.json()["is_buried"] is True, (
+        "Conflict-update must not reset is_buried when it was not included in the patch"
+    )
+    assert r2.json()["is_flagged"] is True
+
+
+def test_flashcard_state_user_note(client: TestClient) -> None:
+    drug_id = _first_drug_id(client)
+    attr_id = _first_attribute_type_id(client)
+
+    resp = client.patch(
+        f"/study/flashcard-state/{drug_id}/{attr_id}",
+        json={"user_id": TEST_USER_ID, "user_note": "review this mechanism"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["user_note"] == "review this mechanism"

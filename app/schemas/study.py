@@ -75,3 +75,22 @@ class QueueItem(BaseModel):
 
 class QueueResponse(BaseModel):
     items: list[QueueItem]
+
+
+# ── Flashcard state (bury / flag / annotate) ──────────────────────────────────
+
+class FlashcardStateUpdate(BaseModel):
+    # TODO: Replace user_id with Depends(get_current_user) once auth lands (task 5).
+    user_id: UUID
+    is_buried: Optional[bool] = None
+    is_flagged: Optional[bool] = None
+    user_note: Optional[str] = None
+
+
+class FlashcardStateResponse(BaseModel):
+    drug_id: UUID
+    attribute_type_id: UUID
+    is_buried: bool
+    is_flagged: bool
+    user_note: Optional[str]
+    updated_at: datetime

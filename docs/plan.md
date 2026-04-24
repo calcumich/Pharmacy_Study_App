@@ -39,39 +39,15 @@ state cards now always surface in the queue regardless of `due_date`, so rating=
 
 ---
 
-### [ ] 3. PATCH /study/flashcard-state
+### [x] 3. PATCH /study/flashcard-state
 
-**Goal:** Allow a user to bury, flag, or annotate an individual flashcard.
-
-**Context:**
-- `FlashcardState` model already exists in `app/models/study.py` with `is_buried`,
-  `is_flagged`, `user_note`, and a unique constraint on
-  `(user_id, drug_id, attribute_type_id)`.
-- Pattern matches the `srs_state` upsert: `INSERT ... ON CONFLICT DO UPDATE`.
-
-**Steps:**
-1. Add to `app/schemas/study.py`:
-   - `FlashcardStateUpdate`: `user_id` (UUID, with same TODO note as ReviewRequest),
-     `is_buried` (bool | None), `is_flagged` (bool | None), `user_note` (str | None).
-     All three fields are optional so callers can patch one at a time.
-   - `FlashcardStateResponse`: mirrors the model fields
-     (`drug_id`, `attribute_type_id`, `is_buried`, `is_flagged`, `user_note`,
-     `updated_at`).
-2. Add to `app/routers/study.py`:
-   ```
-   PATCH /study/flashcard-state/{drug_id}/{attribute_type_id}
-   ```
-   - Body: `FlashcardStateUpdate`
-   - Upsert with `pg_insert(FlashcardState).on_conflict_do_update(...)`.
-   - On conflict, only update fields that are not None in the request (use
-     `COALESCE` in the `set_` dict or build the dict conditionally).
-   - Return `FlashcardStateResponse`.
-3. Add a unit test using `dependency_overrides` (no DB needed) in a new file
-   `tests/test_unit_flashcard_state.py`, verifying the 201 path and the
-   null-field-ignored behaviour.
-
-**Files to touch:** `app/schemas/study.py`, `app/routers/study.py`,
-`tests/test_unit_flashcard_state.py` (new).
+**Done:** `PATCH /study/flashcard-state/{drug_id}/{attribute_type_id}` added to
+`app/routers/study.py`. `FlashcardStateUpdate` + `FlashcardStateResponse` schemas
+added to `app/schemas/study.py`. Non-None-only conflict-update set ensures patching
+one field never resets the others. Re-fetches after upsert to return authoritative
+DB state. 2 unit tests in `tests/test_unit_flashcard_state.py`; 2 smoke tests
+appended to `tests/test_smoke_write.py` covering the conflict-preserve path and
+`user_note`. All 65 tests pass.
 
 ---
 

@@ -10,12 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.drugs import AttributeType, Drug, DrugAdr, DrugIndication, DrugMetabolism
 from app.models.interactions import DrugInteraction
-from app.models.study import SrsCardState, SrsState, StudySession
+from app.models.study import FlashcardState, SrsCardState, SrsState, StudySession
 from app.schemas.study import (
     TableCell, TableResponse,
     SessionCreate, SessionResponse,
     ReviewRequest, ReviewResponse,
     QueueItem, QueueResponse,
+    FlashcardStateUpdate, FlashcardStateResponse,
 )
 from app.services.fsrs import schedule as fsrs_schedule
 
@@ -288,4 +289,73 @@ async def get_queue(
             )
             for row in rows
         ]
+    )
+
+
+# ── Flashcard state ───────────────────────────────────────────────────────────
+
+@router.patch(
+    "/flashcard-state/{drug_id}/{attribute_type_id}",
+    response_model=FlashcardStateResponse,
+    status_code=201,
+)
+async def patch_flashcard_state(
+    drug_id: UUID,
+    attribute_type_id: UUID,
+    body: FlashcardStateUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> FlashcardStateResponse:
+    """
+    Upsert bury / flag / annotation state for one flashcard.
+
+    Only non-None fields in the request body are written on conflict, so
+    callers can update a single field without resetting the others.
+    """
+    now = datetime.now(timezone.utc)
+
+    # Build the conflict-update set from only the fields the caller provided.
+    update_fields: dict = {"updated_at": now}
+    if body.is_buried is not None:
+        update_fields["is_buried"] = body.is_buried
+    if body.is_flagged is not None:
+        update_fields["is_flagged"] = body.is_flagged
+    if body.user_note is not None:
+        update_fields["user_note"] = body.user_note
+
+    stmt = (
+        pg_insert(FlashcardState)
+        .values(
+            user_id=body.user_id,
+            drug_id=drug_id,
+            attribute_type_id=attribute_type_id,
+            is_buried=body.is_buried if body.is_buried is not None else False,
+            is_flagged=body.is_flagged if body.is_flagged is not None else False,
+            user_note=body.user_note,
+            updated_at=now,
+        )
+        .on_conflict_do_update(
+            index_elements=["user_id", "drug_id", "attribute_type_id"],
+            set_=update_fields,
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+    # Re-fetch to return the authoritative DB state (conflict path may have
+    # left some fields unchanged that are not in update_fields).
+    row = (await db.execute(
+        select(FlashcardState).where(
+            FlashcardState.user_id == body.user_id,
+            FlashcardState.drug_id == drug_id,
+            FlashcardState.attribute_type_id == attribute_type_id,
+        )
+    )).scalar_one()
+
+    return FlashcardStateResponse(
+        drug_id=row.drug_id,
+        attribute_type_id=row.attribute_type_id,
+        is_buried=row.is_buried,
+        is_flagged=row.is_flagged,
+        user_note=row.user_note,
+        updated_at=row.updated_at,
     )
