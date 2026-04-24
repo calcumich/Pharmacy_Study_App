@@ -2,16 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
-
-from app.main import app
-
-
-@pytest.fixture(scope="session")
-def client() -> TestClient:
-    with TestClient(app) as c:
-        yield c
 
 
 def _flatten_classes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:

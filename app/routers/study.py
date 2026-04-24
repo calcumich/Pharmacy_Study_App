@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.drugs import AttributeType, Drug, DrugAdr, DrugIndication, DrugMetabolism
 from app.models.interactions import DrugInteraction
-from app.models.study import SrsState, SrsCardState, StudySession
+from app.models.study import SrsCardState, SrsState, StudySession
 from app.schemas.study import (
     TableCell, TableResponse,
     SessionCreate, SessionResponse,
@@ -254,11 +254,21 @@ async def get_queue(
     """
     now = datetime.now(timezone.utc)
 
+    # Cards are due when:
+    #   - due_date has passed (normal review cadence), OR
+    #   - due_date is NULL (never reviewed), OR
+    #   - state is learning/relearning — these always surface regardless of
+    #     due_date so "Again" puts a card back into the active session queue.
+    _short_term_states = (SrsCardState.learning, SrsCardState.relearning)
     query = (
         select(SrsState)
         .where(
             SrsState.user_id == user_id,
-            or_(SrsState.due_date <= now, SrsState.due_date.is_(None)),
+            or_(
+                SrsState.due_date <= now,
+                SrsState.due_date.is_(None),
+                SrsState.state.in_(_short_term_states),
+            ),
         )
         .order_by(SrsState.due_date.asc().nulls_first())
         .limit(limit)

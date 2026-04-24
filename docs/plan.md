@@ -29,40 +29,13 @@ TODO comments marking the JWT swap point.
 
 ---
 
-### [ ] 2. Smoke tests for write endpoints
+### [x] 2. Smoke tests for write endpoints
 
-**Goal:** DB-backed integration tests for the three new write endpoints, matching the
-pattern already established in `tests/test_smoke_api.py`.
-
-**Context:**
-- `tests/test_smoke_api.py` uses a real `TestClient` + real DB. That fixture and the
-  `_find_class_with_drugs` helper are reusable.
-- The write endpoints upsert into `srs_state` (unique on `user_id, drug_id`).
-  The upsert path (conflict → update) has no unit coverage yet.
-- Use a fixed test UUID for `user_id` so rows don't collide across runs. Clean up
-  after the test module with a session-scoped fixture if needed.
-
-**Steps:**
-1. Add a new file `tests/test_smoke_write.py`.
-2. Reuse the `client` fixture from `test_smoke_api.py` (move to a shared
-   `conftest.py` if that's cleaner — both files live in `tests/`).
-3. Write these tests (in order):
-   - `test_create_session_returns_id` — POST /study/sessions with one drug,
-     assert 201, response has `session_id` and `started_at`.
-   - `test_review_new_card` — POST /study/review with a seeded drug, rating=3.
-     Assert state in `{"learning", "review"}`, `review_count == 1`,
-     `due_date` is in the future.
-   - `test_review_upserts_not_inserts` — POST /study/review twice for the same
-     drug + user. Assert the second response has `review_count == 2` (not 1),
-     confirming the conflict update path fired.
-   - `test_review_again_then_queue` — POST /study/review with rating=1 (Again),
-     then GET /study/queue. Assert the drug appears in the queue response.
-   - `test_queue_respects_drug_ids_filter` — Submit two reviews for two different
-     drugs, then GET /study/queue with only one `drug_id`. Assert only that drug
-     is returned.
-
-**Files to touch:** `tests/test_smoke_write.py` (new), possibly `tests/conftest.py`
-(new, to share the `client` fixture).
+**Done:** `tests/test_smoke_write.py` (5 tests) and `tests/conftest.py` added.
+`client` fixture moved from `test_smoke_api.py` to `conftest.py` so both smoke
+files share it. Fixed a bug in `GET /study/queue`: `learning` and `relearning`
+state cards now always surface in the queue regardless of `due_date`, so rating=1
+(Again) puts a card back into the active session immediately. All 61 tests pass.
 
 ---
 
