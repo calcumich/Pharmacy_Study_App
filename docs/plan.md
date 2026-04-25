@@ -222,7 +222,123 @@ when no session exists.
 
 ---
 
-## Phase 4 — Quality of life
+## Phase 4 — Correctness & core UX (NEW — promoted ahead of Phase 5)
+
+These were uncovered during the 2026-04-24 review. They sit ahead of the
+quality-of-life work because they fix actual bugs or close gaps in the app's
+core promise (spaced repetition).
+
+### [x] 10. Make flashcards SRS-driven + fix DDI rendering
+
+**Done:** `App.tsx::startStudy` now fetches drug details, `/study/queue`, and
+relational data from `/study/table` in parallel during flashcard setup. Cards
+are sorted so drugs that appear in the SRS queue come first, in queue order
+(most overdue first); never-reviewed drugs follow. DDI cards are populated from
+the table response indexed by `drug_id`, fixing the silent
+`getCardContent(...) → []` regression. `FlashcardView` shows a state badge
+(`new` / `learning` / `relearning` / `review`) above each card and, after a
+rating, briefly displays "Next review in N days · stability X.X" using the
+`ReviewResponse.due_date` and `stability` before auto-advancing. Frontend
+builds clean; 69 backend tests still pass (one pre-existing auth-mock failure
+on master is unrelated).
+
+**Goal (archived):** The flashcard study path currently ignores `/study/queue`
+and builds a static drug × attribute cross-product. DDI cards also render empty
+because `getDrug()` returns no interaction data. Together: the app advertises
+spaced repetition but doesn't actually deliver it, and one of the four card
+shapes is broken.
+
+**Context:**
+- `frontend/src/components/FlashcardView.tsx::getCardContent` (line 70) returns
+  `[]` for `at.slug === 'ddis'`. There is no path that loads interactions.
+- `frontend/src/App.tsx::startStudy` (line 212) calls `getDrug()` per drug and
+  flatMaps drug × attribute. It never calls `getQueue()`.
+- `/study/queue` returns drug-level SRS state ordered by `due_date` ASC (most
+  overdue first); learning/relearning cards always surface. This is the right
+  ordering signal for cards.
+- SRS state is per-(user, drug), not per-(user, drug, attribute) — the queue
+  tells us which **drugs** are due; we still expand to (drug × attribute) cards
+  on the client.
+
+**Steps:**
+1. In `App.tsx::startStudy`, after `createSession`, fetch in parallel:
+   - `Promise.all(drugIds.map(getDrug))` (existing)
+   - `getQueue(drugIds, 200)` (new — graceful fallback to `{items: []}` on error)
+   - `getTable(drugIds, relationalAtIds)` only if any selected attribute has
+     `shape === 'relational'`
+2. Index the queue by `drug_id` to get an "due rank". Sort cards: cards whose
+   drug is in the queue come first in queue order; rest follow original order.
+3. Pass DDI data (indexed by drug_id) and queue items down to `FlashcardView`.
+4. In `FlashcardView`, replace the `ddis` branch in `getCardContent` to look
+   up DDI data from the prop. Add a small "Due" / "New" / "Learning" badge
+   sourced from the queue map.
+5. After `submitReview` resolves, briefly show the new `due_date` (e.g.
+   "Next review in 3 days") before advancing — the response already carries it.
+
+**Files to touch:** `frontend/src/App.tsx`,
+`frontend/src/components/FlashcardView.tsx`, `frontend/src/types/api.ts`
+(only if a new prop type is needed).
+
+---
+
+### [ ] 11. Async-safe JWKS fetching
+
+**Goal:** `app/dependencies/auth.py:36` calls `urllib.request.urlopen` directly
+inside the async `get_current_user` path. This blocks the event loop for the
+duration of the network round-trip. Move to `asyncio.to_thread` or
+`httpx.AsyncClient`.
+
+**Steps:**
+1. Convert `_fetch_jwks` to async; await it from `_decode_supabase_token` (also
+   converted to async). Pass through `await` in `get_current_user`.
+2. Use `httpx.AsyncClient(timeout=5)` — already in `pyproject.toml` via
+   `httpx>=0.28` (dev). Add as a runtime dep if not already there.
+3. Update `tests/test_unit_auth.py` to `await` the helpers.
+
+**Files to touch:** `app/dependencies/auth.py`, `tests/test_unit_auth.py`,
+possibly `pyproject.toml`.
+
+---
+
+### [ ] 12. Sign-up form
+
+**Goal:** New users currently can't onboard — `LoginForm` only signs in. Add a
+toggle between sign-in and sign-up that calls `supabase.auth.signUp` and
+explains the email-confirmation step.
+
+**Files to touch:** `frontend/src/App.tsx` (or extract `LoginForm` to its own
+file).
+
+---
+
+### [ ] 13. Real `/health` + configurable CORS
+
+**Goal:** `/health` should `SELECT 1` so orchestrators detect DB outages.
+`CORSMiddleware` should read allowed origins from settings instead of hardcoding
+`localhost:5173`.
+
+**Steps:**
+1. `app/main.py` — `/health` runs a trivial DB query through `get_db`, returns
+   `{db: "ok"}` or 503.
+2. `app/config.py` — add `CORS_ORIGINS: list[str]` (default
+   `["http://localhost:5173"]`); read from `CORS_ORIGINS` env var as a
+   comma-separated list.
+3. `app/main.py` — pass `settings.CORS_ORIGINS` to `CORSMiddleware`.
+4. Update `.env.example`.
+
+---
+
+### [ ] 14. Visible error messages in the UI
+
+**Goal:** `setError(String(e))` produces useless strings like `Error: API error
+500: /study/review`. Surface a friendlier message and the underlying status.
+
+**Files to touch:** `frontend/src/api/client.ts` (throw a typed error with
+status + message body), `frontend/src/App.tsx`, `FlashcardView.tsx`.
+
+---
+
+## Phase 5 — Quality of life (was Phase 4)
 
 ### [ ] 7. Drug search endpoint
 

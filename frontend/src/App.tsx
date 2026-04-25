@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { getDrugClasses, getDrugsByClass, getAttributeTypes, getDrug, getTable, createSession } from './api';
-import { setAuthToken } from './api/client';
+import { getQueue, setAuthToken } from './api/client';
 import { supabase } from './lib/supabase';
 import { ClassBrowser } from './components/ClassBrowser';
 import { DrugSelector } from './components/DrugSelector';
@@ -13,6 +13,8 @@ import type {
   DrugClassNode,
   DrugDetail,
   DrugSummary,
+  InteractionEntry,
+  QueueItem,
   TableResponse,
 } from './types/api';
 
@@ -143,6 +145,8 @@ export default function App() {
   const [tableData, setTableData] = useState<TableResponse | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [ddisByDrugId, setDdisByDrugId] = useState<Record<string, InteractionEntry[]>>({});
+  const [queueByDrugId, setQueueByDrugId] = useState<Record<string, QueueItem>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -222,17 +226,49 @@ export default function App() {
         setTableData(data);
         setCards([]);
       } else {
-        // Flashcard: create a session, then load drug details and build cards.
-        const session = await createSession({
-          drug_ids: drugIds,
-          mode: 'flashcard',
-        });
-        setSessionId(session.session_id);
-        const details = await Promise.all(drugIds.map((id) => getDrug(id)));
         const ats = attributeTypes.filter((a) => atIds.includes(a.id));
+        const relationalAtIds = ats.filter((a) => a.shape === 'relational').map((a) => a.id);
+
+        // Create the session first; queue/DDI fetches can run concurrently with drug detail fetches.
+        const session = await createSession({ drug_ids: drugIds, mode: 'flashcard' });
+
+        const [details, queueResp, ddiTable] = await Promise.all([
+          Promise.all(drugIds.map((id) => getDrug(id))),
+          // Queue is drug-level SRS state; degrade gracefully if it fails.
+          getQueue(drugIds, 200).catch(() => ({ items: [] as QueueItem[] })),
+          relationalAtIds.length > 0
+            ? getTable(drugIds, relationalAtIds)
+            : Promise.resolve(null),
+        ]);
+
+        // Index DDI cells by drug for FlashcardView lookup (one fetch covers every relational AT).
+        const ddiMap: Record<string, InteractionEntry[]> = {};
+        if (ddiTable) {
+          for (const cell of ddiTable.cells) {
+            ddiMap[cell.drug_id] = (cell.content as InteractionEntry[]) ?? [];
+          }
+        }
+
+        // Sort cards by SRS due-rank — cards whose drug is due come first, in queue order.
+        const queueRank: Record<string, number> = {};
+        const queueMap: Record<string, QueueItem> = {};
+        queueResp.items.forEach((item, i) => {
+          queueRank[item.drug_id] = i;
+          queueMap[item.drug_id] = item;
+        });
+
         const newCards: Card[] = details.flatMap((drug) =>
           ats.map((at) => ({ drug, attributeType: at })),
         );
+        newCards.sort((a, b) => {
+          const aRank = queueRank[a.drug.id] ?? Number.POSITIVE_INFINITY;
+          const bRank = queueRank[b.drug.id] ?? Number.POSITIVE_INFINITY;
+          return aRank - bRank;
+        });
+
+        setSessionId(session.session_id);
+        setDdisByDrugId(ddiMap);
+        setQueueByDrugId(queueMap);
         setCards(newCards);
         setTableData(null);
       }
@@ -339,6 +375,8 @@ export default function App() {
             <FlashcardView
               cards={cards}
               sessionId={sessionId}
+              ddisByDrugId={ddisByDrugId}
+              queueByDrugId={queueByDrugId}
               onDone={reset}
             />
           )}

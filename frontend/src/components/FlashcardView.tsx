@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AttributeType, DrugDetail, InteractionEntry } from '../types/api';
+import type { AttributeType, DrugDetail, InteractionEntry, QueueItem, ReviewResponse } from '../types/api';
 import { submitReview } from '../api';
 
 interface Card {
@@ -10,6 +10,8 @@ interface Card {
 interface Props {
   cards: Card[];
   sessionId: string | null;
+  ddisByDrugId: Record<string, InteractionEntry[]>;
+  queueByDrugId: Record<string, QueueItem>;
   onDone: () => void;
 }
 
@@ -61,14 +63,37 @@ function renderContent(content: unknown, shape: string): React.ReactNode {
   return <pre className="text-sm text-gray-300">{JSON.stringify(content, null, 2)}</pre>;
 }
 
-function getCardContent(card: Card): unknown {
+function getCardContent(
+  card: Card,
+  ddisByDrugId: Record<string, InteractionEntry[]>,
+): unknown {
   const { drug, attributeType: at } = card;
   if (at.shape === 'scalar') return drug.attributes[at.slug] ?? null;
   if (at.slug === 'indications') return drug.indications;
   if (at.slug === 'adrs') return drug.adrs;
   if (at.slug === 'metabolism') return drug.metabolism;
-  if (at.slug === 'ddis') return [];
+  if (at.shape === 'relational') return ddisByDrugId[drug.id] ?? [];
   return null;
+}
+
+function daysUntil(iso: string): number {
+  const ms = new Date(iso).getTime() - Date.now();
+  return Math.max(0, Math.round(ms / 86_400_000));
+}
+
+const STATE_BADGE: Record<string, string> = {
+  new:        'bg-gray-700 text-gray-300',
+  learning:   'bg-yellow-900/60 text-yellow-300',
+  relearning: 'bg-orange-900/60 text-orange-300',
+  review:     'bg-blue-900/60 text-blue-300',
+};
+
+function StateBadge({ label, className }: { label: string; className: string }) {
+  return (
+    <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono uppercase tracking-wider ${className}`}>
+      {label}
+    </span>
+  );
 }
 
 const RATING_LABELS: Record<number, string> = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
@@ -79,10 +104,14 @@ const RATING_STYLES: Record<number, string> = {
   4: 'border-blue-600 bg-blue-900/40 hover:bg-blue-800/60 text-blue-200',
 };
 
-export function FlashcardView({ cards, onDone }: Props) {
+// How long the post-rating "Next review in X days" toast stays before auto-advancing.
+const FEEDBACK_MS = 900;
+
+export function FlashcardView({ cards, ddisByDrugId, queueByDrugId, onDone }: Props) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<ReviewResponse | null>(null);
 
   if (cards.length === 0) {
     return (
@@ -96,10 +125,14 @@ export function FlashcardView({ cards, onDone }: Props) {
   }
 
   const card = cards[index];
-  const content = getCardContent(card);
+  const content = getCardContent(card, ddisByDrugId);
   const progress = `${index + 1} / ${cards.length}`;
+  // queueByDrugId only has rows for drugs the user has reviewed before; absence ⇒ "new".
+  const queueEntry = queueByDrugId[card.drug.id];
+  const cardState = queueEntry?.state ?? 'new';
 
-  function next() {
+  function advance() {
+    setFeedback(null);
     if (index + 1 >= cards.length) {
       onDone();
     } else {
@@ -112,6 +145,7 @@ export function FlashcardView({ cards, onDone }: Props) {
     if (index > 0) {
       setIndex((i) => i - 1);
       setRevealed(false);
+      setFeedback(null);
     }
   }
 
@@ -119,16 +153,18 @@ export function FlashcardView({ cards, onDone }: Props) {
     const card = cards[index];
     setSubmitting(true);
     try {
-      await submitReview({
+      const result = await submitReview({
         drug_id: card.drug.id,
         attribute_type_id: card.attributeType.id,
         rating,
       });
+      setFeedback(result);
+      window.setTimeout(advance, FEEDBACK_MS);
     } catch (err) {
       console.error('Review submission failed:', err);
+      advance();
     } finally {
       setSubmitting(false);
-      next();
     }
   }
 
@@ -149,9 +185,12 @@ export function FlashcardView({ cards, onDone }: Props) {
       <div className="w-full max-w-2xl">
         {/* Front */}
         <div className="rounded-2xl border border-gray-700 bg-gray-800 p-8 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-blue-400 mb-2">
-            {card.attributeType.label}
-          </p>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-blue-400">
+              {card.attributeType.label}
+            </p>
+            <StateBadge label={cardState} className={STATE_BADGE[cardState] ?? STATE_BADGE.new} />
+          </div>
           <h2 className="text-3xl font-bold text-white mb-1">{card.drug.name}</h2>
           {card.drug.generic_name && (
             <p className="text-sm text-gray-500">{card.drug.generic_name}</p>
@@ -169,18 +208,26 @@ export function FlashcardView({ cards, onDone }: Props) {
               <div className="mt-8 pt-6 border-t border-gray-700 text-left">
                 {renderContent(content, card.attributeType.shape)}
               </div>
-              <div className="flex gap-2 justify-center mt-6">
-                {([1, 2, 3, 4] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => rate(r)}
-                    disabled={submitting}
-                    className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${RATING_STYLES[r]}`}
-                  >
-                    {RATING_LABELS[r]}
-                  </button>
-                ))}
-              </div>
+              {feedback ? (
+                <p className="mt-6 text-sm text-blue-300">
+                  Next review in {daysUntil(feedback.due_date)} day
+                  {daysUntil(feedback.due_date) === 1 ? '' : 's'} · stability{' '}
+                  {feedback.stability.toFixed(1)}
+                </p>
+              ) : (
+                <div className="flex gap-2 justify-center mt-6">
+                  {([1, 2, 3, 4] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => rate(r)}
+                      disabled={submitting}
+                      className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${RATING_STYLES[r]}`}
+                    >
+                      {RATING_LABELS[r]}
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -198,7 +245,7 @@ export function FlashcardView({ cards, onDone }: Props) {
         {/* Next/Finish only shown before the answer is revealed (skip without rating) */}
         {!revealed && (
           <button
-            onClick={next}
+            onClick={advance}
             className="px-5 py-2 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors"
           >
             {index + 1 >= cards.length ? 'Finish' : 'Skip →'}
