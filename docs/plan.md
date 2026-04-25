@@ -281,22 +281,19 @@ shapes is broken.
 
 ---
 
-### [ ] 11. Async-safe JWKS fetching
+### [x] 11. Async-safe JWKS fetching
 
-**Goal:** `app/dependencies/auth.py:36` calls `urllib.request.urlopen` directly
-inside the async `get_current_user` path. This blocks the event loop for the
-duration of the network round-trip. Move to `asyncio.to_thread` or
-`httpx.AsyncClient`.
-
-**Steps:**
-1. Convert `_fetch_jwks` to async; await it from `_decode_supabase_token` (also
-   converted to async). Pass through `await` in `get_current_user`.
-2. Use `httpx.AsyncClient(timeout=5)` — already in `pyproject.toml` via
-   `httpx>=0.28` (dev). Add as a runtime dep if not already there.
-3. Update `tests/test_unit_auth.py` to `await` the helpers.
-
-**Files to touch:** `app/dependencies/auth.py`, `tests/test_unit_auth.py`,
-possibly `pyproject.toml`.
+**Done:** `app/dependencies/auth.py` rewritten so `_fetch_jwks` and
+`_decode_supabase_token` are `async`; JWKS retrieval now uses
+`httpx.AsyncClient(timeout=5)` instead of `urllib.request.urlopen`. Added an
+`asyncio.Lock` with double-checked caching so a cold start under concurrent
+load only triggers one upstream JWKS fetch. `get_current_user` awaits the
+helper and now traps `httpx.HTTPError` in addition to `JWTError` /
+`RuntimeError` / `ValueError`. `httpx>=0.28` promoted from dev-only to a
+runtime dependency in `pyproject.toml`. `tests/test_unit_auth.py` updated:
+helper tests are now `@pytest.mark.asyncio`, `_fetch_jwks` monkeypatches are
+async, and a pre-existing typo (`_algorithms` arg) that was failing on master
+is fixed in passing. All 70 tests pass (was 69/70).
 
 ---
 

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from urllib.error import URLError
-
+import httpx
 import pytest
 from jose import JWTError
 
 from app.dependencies import auth
 
 
-def test_decode_supabase_token_uses_legacy_secret_for_hs_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.asyncio
+async def test_decode_supabase_token_uses_legacy_secret_for_hs_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(auth.settings, "SUPABASE_JWT_SECRET", "legacy-secret")
     monkeypatch.setattr(auth.jwt, "get_unverified_header", lambda _token: {"alg": "HS256"})
 
@@ -23,7 +23,7 @@ def test_decode_supabase_token_uses_legacy_secret_for_hs_tokens(monkeypatch: pyt
 
     monkeypatch.setattr(auth.jwt, "decode", fake_decode)
 
-    payload = auth._decode_supabase_token("token-value")
+    payload = await auth._decode_supabase_token("token-value")
 
     assert payload["sub"] == "00000000-dead-beef-0000-000000000001"
     assert captured == {
@@ -34,10 +34,15 @@ def test_decode_supabase_token_uses_legacy_secret_for_hs_tokens(monkeypatch: pyt
     }
 
 
-def test_decode_supabase_token_uses_jwks_for_asymmetric_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.asyncio
+async def test_decode_supabase_token_uses_jwks_for_asymmetric_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     jwks = {"keys": [{"kid": "kid-1", "alg": "ES256", "kty": "EC"}]}
     monkeypatch.setattr(auth.jwt, "get_unverified_header", lambda _token: {"alg": "ES256", "kid": "kid-1"})
-    monkeypatch.setattr(auth, "_fetch_jwks", lambda force_refresh=False: jwks)
+
+    async def fake_fetch_jwks(*, force_refresh: bool = False) -> dict:
+        return jwks
+
+    monkeypatch.setattr(auth, "_fetch_jwks", fake_fetch_jwks)
 
     captured: dict = {}
 
@@ -50,7 +55,7 @@ def test_decode_supabase_token_uses_jwks_for_asymmetric_tokens(monkeypatch: pyte
 
     monkeypatch.setattr(auth.jwt, "decode", fake_decode)
 
-    payload = auth._decode_supabase_token("token-value")
+    payload = await auth._decode_supabase_token("token-value")
 
     assert payload["sub"] == "00000000-dead-beef-0000-000000000001"
     assert captured == {
@@ -61,12 +66,13 @@ def test_decode_supabase_token_uses_jwks_for_asymmetric_tokens(monkeypatch: pyte
     }
 
 
-def test_decode_supabase_token_refreshes_jwks_after_jwt_error(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.asyncio
+async def test_decode_supabase_token_refreshes_jwks_after_jwt_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(auth.jwt, "get_unverified_header", lambda _token: {"alg": "ES256", "kid": "kid-1"})
 
     calls: list[bool] = []
 
-    def fake_fetch_jwks(force_refresh: bool = False) -> dict:
+    async def fake_fetch_jwks(*, force_refresh: bool = False) -> dict:
         calls.append(force_refresh)
         if force_refresh:
             return {"keys": [{"kid": "kid-1", "alg": "ES256", "kty": "EC", "fresh": True}]}
@@ -74,7 +80,7 @@ def test_decode_supabase_token_refreshes_jwks_after_jwt_error(monkeypatch: pytes
 
     attempts = {"count": 0}
 
-    def fake_decode(_token: str, key: object, _algorithms: list[str], _options: dict) -> dict:
+    def fake_decode(_token: str, key: object, algorithms: list[str], options: dict) -> dict:
         attempts["count"] += 1
         if attempts["count"] == 1:
             raise JWTError("stale jwks")
@@ -83,7 +89,7 @@ def test_decode_supabase_token_refreshes_jwks_after_jwt_error(monkeypatch: pytes
     monkeypatch.setattr(auth, "_fetch_jwks", fake_fetch_jwks)
     monkeypatch.setattr(auth.jwt, "decode", fake_decode)
 
-    payload = auth._decode_supabase_token("token-value")
+    payload = await auth._decode_supabase_token("token-value")
 
     assert payload["sub"] == "00000000-dead-beef-0000-000000000001"
     assert calls == [False, True]
@@ -91,11 +97,10 @@ def test_decode_supabase_token_refreshes_jwks_after_jwt_error(monkeypatch: pytes
 
 @pytest.mark.asyncio
 async def test_get_current_user_returns_uuid_from_valid_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        auth,
-        "_decode_supabase_token",
-        lambda _token: {"sub": "00000000-dead-beef-0000-000000000001"},
-    )
+    async def fake_decode(_token: str) -> dict:
+        return {"sub": "00000000-dead-beef-0000-000000000001"}
+
+    monkeypatch.setattr(auth, "_decode_supabase_token", fake_decode)
 
     user_id = await auth.get_current_user("token-value")
 
@@ -104,7 +109,10 @@ async def test_get_current_user_returns_uuid_from_valid_token(monkeypatch: pytes
 
 @pytest.mark.asyncio
 async def test_get_current_user_rejects_invalid_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(auth, "_decode_supabase_token", lambda _token: (_ for _ in ()).throw(URLError("boom")))
+    async def fake_decode(_token: str) -> dict:
+        raise httpx.ConnectError("boom")
+
+    monkeypatch.setattr(auth, "_decode_supabase_token", fake_decode)
 
     with pytest.raises(Exception) as exc_info:
         await auth.get_current_user("token-value")

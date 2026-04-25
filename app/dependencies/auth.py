@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
+import asyncio
 import time
 import uuid
-from urllib.error import URLError
-from urllib.request import urlopen
 
+import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -14,8 +13,13 @@ from app.config import settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 _JWKS_CACHE_TTL_SECONDS = 600
+_JWKS_FETCH_TIMEOUT_SECONDS = 5.0
+
 _jwks_cache: dict | None = None
 _jwks_cache_expires_at = 0.0
+# Serialise concurrent JWKS fetches so the first cold-start request doesn't fan
+# out into N upstream calls under load.
+_jwks_fetch_lock = asyncio.Lock()
 
 
 def _jwks_url() -> str:
@@ -25,7 +29,7 @@ def _jwks_url() -> str:
     return f"{base_url}/auth/v1/.well-known/jwks.json"
 
 
-def _fetch_jwks(*, force_refresh: bool = False) -> dict:
+async def _fetch_jwks(*, force_refresh: bool = False) -> dict:
     global _jwks_cache
     global _jwks_cache_expires_at
 
@@ -33,18 +37,26 @@ def _fetch_jwks(*, force_refresh: bool = False) -> dict:
     if not force_refresh and _jwks_cache is not None and now < _jwks_cache_expires_at:
         return _jwks_cache
 
-    with urlopen(_jwks_url(), timeout=5) as response:
-        jwks = json.load(response)
+    async with _jwks_fetch_lock:
+        # Re-check after acquiring the lock — another caller may have just refreshed.
+        now = time.time()
+        if not force_refresh and _jwks_cache is not None and now < _jwks_cache_expires_at:
+            return _jwks_cache
 
-    if not isinstance(jwks, dict) or not isinstance(jwks.get("keys"), list):
-        raise RuntimeError("Invalid JWKS response from Supabase")
+        async with httpx.AsyncClient(timeout=_JWKS_FETCH_TIMEOUT_SECONDS) as client:
+            response = await client.get(_jwks_url())
+            response.raise_for_status()
+            jwks = response.json()
 
-    _jwks_cache = jwks
-    _jwks_cache_expires_at = now + _JWKS_CACHE_TTL_SECONDS
-    return jwks
+        if not isinstance(jwks, dict) or not isinstance(jwks.get("keys"), list):
+            raise RuntimeError("Invalid JWKS response from Supabase")
+
+        _jwks_cache = jwks
+        _jwks_cache_expires_at = now + _JWKS_CACHE_TTL_SECONDS
+        return jwks
 
 
-def _decode_supabase_token(token: str) -> dict:
+async def _decode_supabase_token(token: str) -> dict:
     header = jwt.get_unverified_header(token)
     algorithm = header.get("alg")
     if not algorithm:
@@ -61,7 +73,7 @@ def _decode_supabase_token(token: str) -> dict:
         )
 
     try:
-        jwks = _fetch_jwks()
+        jwks = await _fetch_jwks()
         return jwt.decode(
             token,
             jwks,
@@ -70,7 +82,7 @@ def _decode_supabase_token(token: str) -> dict:
         )
     except JWTError:
         # Retry once with a forced refresh in case Supabase rotated keys.
-        jwks = _fetch_jwks(force_refresh=True)
+        jwks = await _fetch_jwks(force_refresh=True)
         return jwt.decode(
             token,
             jwks,
@@ -81,10 +93,10 @@ def _decode_supabase_token(token: str) -> dict:
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> uuid.UUID:
     try:
-        payload = _decode_supabase_token(token)
+        payload = await _decode_supabase_token(token)
         sub: str | None = payload.get("sub")
         if sub is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
         return uuid.UUID(sub)
-    except (JWTError, URLError, RuntimeError, ValueError):
+    except (JWTError, httpx.HTTPError, RuntimeError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
