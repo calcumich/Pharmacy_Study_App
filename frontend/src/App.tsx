@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { getDrugClasses, getDrugsByClass, getAttributeTypes, getDrug, getTable, createSession } from './api';
 import { getQueue, setAuthToken } from './api/client';
 import { supabase } from './lib/supabase';
+import { AuthForm } from './components/AuthForm';
 import { ClassBrowser } from './components/ClassBrowser';
 import { DrugSelector } from './components/DrugSelector';
 import { AttributeSelector } from './components/AttributeSelector';
@@ -59,62 +60,6 @@ function StepIndicator({ current }: { current: Step }) {
           {i < STEPS.length - 1 && <span className="text-gray-700">›</span>}
         </div>
       ))}
-    </div>
-  );
-}
-
-// ── Login form ────────────────────────────────────────────────────────────────
-
-function LoginForm() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError(error.message);
-    setLoading(false);
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <p className="text-4xl mb-3">💊</p>
-          <h1 className="text-xl font-bold">Pharmacy Study App</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to continue</p>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full px-4 py-2.5 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-          />
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors"
-          >
-            {loading ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-      </div>
     </div>
   );
 }
@@ -301,7 +246,7 @@ export default function App() {
   }
 
   if (!session && import.meta.env.VITE_USE_MOCK !== 'true') {
-    return <LoginForm />;
+    return <AuthForm />;
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
