@@ -33,15 +33,18 @@ export function AuthForm() {
     }
 
     setLoading(true);
-    if (mode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setError(error.message);
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setError(error.message);
-      else setEmailSent(true);
+    try {
+      if (mode === 'signin') {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) setError(error.message);
+      } else {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) setError(error.message);
+        else setEmailSent(true);
+      }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   if (emailSent) {
