@@ -100,11 +100,13 @@ export default function App() {
     const useMock = import.meta.env.VITE_USE_MOCK === 'true';
     if (useMock) { setAuthLoading(false); return; }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthToken(session?.access_token ?? null);
-      setAuthLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setAuthToken(session?.access_token ?? null);
+      })
+      .catch(() => {/* treat unreachable auth as no session */})
+      .finally(() => setAuthLoading(false));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setAuthToken(session?.access_token ?? null);
