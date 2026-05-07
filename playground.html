@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pharmacy Study App — Interactive Walkthrough</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#09090f;color:#e2e8f0;font-size:14px}
+#root{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* Header */
+#header{padding:10px 18px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#header h1{font-size:14px;font-weight:700;color:#f1f5f9}
+#header p{font-size:10px;color:#475569;margin-top:1px}
+#presets{display:flex;gap:6px}
+.preset-btn{padding:4px 10px;border-radius:6px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:11px;cursor:pointer;transition:all .15s}
+.preset-btn:hover{border-color:#3b82f6;color:#93c5fd}
+
+/* Main */
+#main{display:flex;flex:1;overflow:hidden}
+#sim-panel{width:58%;display:flex;flex-direction:column;border-right:1px solid #1e293b;overflow:hidden}
+#step-indicator{padding:7px 14px;border-bottom:1px solid #0f172a;display:flex;gap:6px;align-items:center;flex-shrink:0}
+.step-dot{font-size:11px;font-weight:500}
+.step-dot.done{color:#3b82f6}.step-dot.active{color:#f1f5f9}.step-dot.future{color:#334155}
+.step-sep{color:#1e293b;font-size:10px}
+#sim-content{flex:1;overflow:hidden;display:flex}
+
+/* Class browser */
+#class-browser{width:176px;border-right:1px solid #0f172a;padding:10px 6px;overflow-y:auto;flex-shrink:0}
+#class-browser h3{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#475569;margin-bottom:8px;padding:0 4px}
+.class-item{padding:5px 7px;border-radius:6px;cursor:pointer;transition:all .15s;margin-bottom:2px}
+.class-item:hover{background:#1e293b}
+.class-item.selected{background:#1e3a5f;color:#93c5fd}
+.class-name{font-size:12px;font-weight:500}
+.class-desc{font-size:9px;color:#475569;margin-top:1px;line-height:1.3}
+.class-children{padding-left:12px;margin-top:2px;border-left:1px solid #1e293b}
+.expand-btn{background:none;border:none;color:#475569;cursor:pointer;font-size:9px;padding:0 3px;line-height:1}
+
+/* Sim main */
+#sim-main{flex:1;overflow-y:auto;overflow-x:hidden}
+.sim-inner{padding:14px}
+
+/* Drug / AT lists */
+.drug-list,.at-list{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.drug-item,.at-item{display:flex;align-items:center;gap:9px;padding:7px 11px;border-radius:8px;border:1px solid #1e293b;background:#0f172a;cursor:pointer;transition:all .15s}
+.drug-item:hover,.at-item:hover{border-color:#334155}
+.drug-item.selected,.at-item.selected{border-color:#3b82f6;background:#1e3a5f30}
+.drug-item input,.at-item input{accent-color:#3b82f6;cursor:pointer;flex-shrink:0}
+.drug-name,.at-label{font-size:12px;font-weight:600}
+.drug-generic,.at-shape{font-size:10px;color:#64748b;font-family:monospace}
+.select-actions{display:flex;gap:8px;margin-bottom:8px}
+.link-btn{background:none;border:none;color:#64748b;font-size:11px;cursor:pointer;text-decoration:underline}
+.link-btn:hover{color:#94a3b8}
+.section-header{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#475569;margin-bottom:8px}
+.mode-btns{display:flex;gap:8px;margin-bottom:16px}
+.mode-btn{padding:7px 14px;border-radius:9px;border:1px solid #1e293b;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;transition:all .15s}
+.mode-btn:hover{border-color:#334155;color:#e2e8f0}
+.mode-btn.active{border-color:#3b82f6;background:#1d4ed8;color:#fff}
+.btn-primary{padding:7px 18px;border-radius:9px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary:hover{background:#3b82f6}
+.btn-success{padding:9px 22px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-success:hover{background:#22c55e}
+.btn-success:disabled{background:#14532d;color:#374151;cursor:not-allowed}
+.divider{border-top:1px solid #1e293b;margin:16px 0}
+
+/* Browse placeholder */
+.browse-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;height:220px;color:#475569;font-size:13px;gap:8px}
+.browse-placeholder .emoji{font-size:32px}
+
+/* Flashcard */
+#flashcard-area{display:flex;flex-direction:column;align-items:center;padding:18px 14px;gap:12px}
+.progress-wrap{display:flex;align-items:center;gap:10px}
+.progress-label{font-size:11px;color:#64748b}
+.progress-bar{width:150px;height:4px;background:#1e293b;border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:#3b82f6;transition:width .3s}
+.flashcard{width:100%;max-width:460px;border-radius:14px;border:1px solid #1e293b;background:#0f172a;padding:22px}
+.card-attr-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.card-attr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#3b82f6}
+.card-state-badge{font-size:9px;padding:2px 6px;border-radius:4px;font-family:monospace;text-transform:uppercase;letter-spacing:.05em}
+.state-new{background:#1e293b;color:#94a3b8}
+.state-learning{background:#451a03;color:#fbbf24}
+.state-relearning{background:#431407;color:#fb923c}
+.state-review{background:#1e3a5f;color:#60a5fa}
+.card-drug-name{font-size:24px;font-weight:800;color:#f1f5f9}
+.card-generic{font-size:11px;color:#475569}
+.card-answer{margin-top:14px;padding-top:14px;border-top:1px solid #1e293b}
+.reveal-btn{margin-top:18px;padding:9px 22px;border-radius:9px;border:none;background:#2563eb;color:#fff;font-size:12px;font-weight:600;cursor:pointer;display:block;margin-left:auto;margin-right:auto;transition:all .15s}
+.reveal-btn:hover{background:#3b82f6}
+.rating-btns{display:flex;gap:7px;margin-top:14px;justify-content:center}
+.rating-btn{padding:7px 14px;border-radius:9px;border:1px solid;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s}
+.r1-btn{border-color:#7f1d1d;background:#450a0a;color:#fca5a5}.r1-btn:hover{background:#7f1d1d}
+.r2-btn{border-color:#78350f;background:#431407;color:#fde68a}.r2-btn:hover{background:#78350f}
+.r3-btn{border-color:#14532d;background:#052e16;color:#86efac}.r3-btn:hover{background:#14532d}
+.r4-btn{border-color:#1e3a8a;background:#1e3a5f;color:#93c5fd}.r4-btn:hover{background:#1e3a8a}
+.feedback-msg{margin-top:10px;text-align:center;font-size:12px;color:#60a5fa}
+.card-nav{display:flex;gap:7px}
+.nav-btn{padding:6px 13px;border-radius:8px;border:1px solid #1e293b;background:transparent;color:#64748b;font-size:12px;cursor:pointer;transition:all .15s}
+.nav-btn:hover:not(:disabled){border-color:#334155;color:#e2e8f0}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed}
+
+/* Table */
+#table-scroll{overflow:auto;padding:14px}
+.comparison-table{border-collapse:collapse;width:max-content}
+.comparison-table th,.comparison-table td{border:1px solid #1e293b;padding:9px 11px;text-align:left;vertical-align:top;min-width:130px;max-width:200px}
+.comparison-table th{background:#0f172a;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em}
+.comparison-table .row-header{background:#0f172a;font-size:12px;font-weight:600;color:#f1f5f9;position:sticky;left:0;z-index:1;min-width:110px}
+.comparison-table td{font-size:11px;color:#cbd5e1}
+
+/* Explain panel */
+#explain-panel{width:42%;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.explain-step{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#3b82f6;margin-bottom:3px}
+.explain-title{font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:8px}
+.explain-body{font-size:12px;color:#94a3b8;line-height:1.7}
+.explain-body strong{color:#cbd5e1}
+.explain-box{background:#0f172a;border:1px solid #1e293b;border-radius:9px;padding:12px;margin-top:4px}
+.explain-box h4{font-size:10px;font-weight:600;color:#64748b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.fsrs-table{width:100%;border-collapse:collapse;font-size:11px}
+.fsrs-table th{color:#475569;font-weight:600;text-align:left;padding:3px 7px;border-bottom:1px solid #1e293b}
+.fsrs-table td{padding:5px 7px;color:#94a3b8;border-bottom:1px solid #0f172a}
+.fsrs-table tr:last-child td{border-bottom:none}
+.fsrs-tr1 td{color:#fca5a5}.fsrs-tr2 td{color:#fde68a}.fsrs-tr3 td{color:#86efac}.fsrs-tr4 td{color:#93c5fd}
+.rating-col{font-weight:700}
+.srs-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}
+.srs-stat{background:#0a0a14;border:1px solid #1e293b;border-radius:7px;padding:7px 10px}
+.srs-stat-label{font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.05em}
+.srs-stat-value{font-size:15px;font-weight:700;color:#f1f5f9;margin-top:2px}
+.srs-stat-unit{font-size:10px;color:#64748b;font-weight:400}
+.shape-item{display:flex;gap:8px;align-items:flex-start;margin-bottom:7px}
+.shape-tag{font-family:monospace;font-size:10px;padding:2px 6px;border-radius:4px;background:#1e293b;color:#94a3b8;flex-shrink:0;margin-top:1px}
+.state-pill{font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;display:inline-block}
+
+/* Prompt bar */
+#prompt-bar{border-top:1px solid #1e293b;padding:9px 16px;display:flex;align-items:flex-start;gap:12px;background:#09090f;flex-shrink:0;min-height:52px}
+#prompt-text{flex:1;font-size:11px;color:#64748b;line-height:1.6}
+#copy-btn{padding:5px 13px;border-radius:7px;border:1px solid #334155;background:transparent;color:#94a3b8;font-size:11px;font-weight:600;cursor:pointer;flex-shrink:0;transition:all .15s;white-space:nowrap}
+#copy-btn:hover{border-color:#3b82f6;color:#93c5fd}
+#copy-btn.copied{border-color:#16a34a;color:#86efac}
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="header">
+    <div>
+      <h1>💊 Pharmacy Study App — Interactive Walkthrough</h1>
+      <p>Explore the full app flow without running the server</p>
+    </div>
+    <div id="presets">
+      <button class="preset-btn" onclick="applyPreset('betablockers')">Beta-Blockers Flashcards</button>
+      <button class="preset-btn" onclick="applyPreset('aceinhibitors')">ACE Inhibitors Table</button>
+      <button class="preset-btn" onclick="applyPreset('fullcv')">Full CV Study</button>
+      <button class="preset-btn" onclick="applyPreset('reset')">Reset</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="sim-panel">
+      <div id="step-indicator"></div>
+      <div id="sim-content">
+        <div id="class-browser">
+          <h3>Drug Classes</h3>
+          <div id="class-tree"></div>
+        </div>
+        <div id="sim-main"></div>
+      </div>
+    </div>
+    <div id="explain-panel"></div>
+  </div>
+
+  <div id="prompt-bar">
+    <div id="prompt-text">Select a drug class on the left to begin.</div>
+    <button id="copy-btn" onclick="copyPrompt()">Copy prompt</button>
+  </div>
+</div>
+
+<script>
+// ─── Data (mirrors frontend/src/api/mock.ts) ──────────────────────────────────
+
+const DRUG_CLASSES = [
+  { id:'c1', name:'Cardiovascular',  desc:'Drugs acting on the heart and vasculature', children:[
+    { id:'c2', name:'Beta-Blockers',  desc:'Competitive antagonists of β-adrenoceptors', children:[] },
+    { id:'c3', name:'ACE Inhibitors', desc:'Inhibit angiotensin-converting enzyme',      children:[] },
+    { id:'c4', name:'Statins',        desc:'HMG-CoA reductase inhibitors',               children:[] },
+  ]},
+  { id:'c5', name:'Antibiotics', desc:'Antimicrobial agents', children:[
+    { id:'c6', name:'Beta-Lactams', desc:'Contain a β-lactam ring; inhibit cell-wall synthesis', children:[
+      { id:'c7', name:'Penicillins', desc:'Natural and semi-synthetic penicillin derivatives', children:[] },
+    ]},
+  ]},
+];
+
+const DBY = {
+  c2:[{id:'d1',name:'Metoprolol', generic:'metoprolol tartrate/succinate'},
+      {id:'d2',name:'Atenolol',   generic:'atenolol'},
+      {id:'d3',name:'Carvedilol', generic:'carvedilol'}],
+  c3:[{id:'d4',name:'Lisinopril', generic:'lisinopril'},
+      {id:'d5',name:'Ramipril',   generic:'ramipril'}],
+  c4:[{id:'d6',name:'Atorvastatin',generic:'atorvastatin calcium'}],
+  c7:[{id:'d7',name:'Amoxicillin', generic:'amoxicillin trihydrate'}],
+};
+DBY.c1=[...DBY.c2,...DBY.c3,...DBY.c4];
+DBY.c5=[...DBY.c7]; DBY.c6=[...DBY.c7];
+
+const DD = {
+  d1:{id:'d1',name:'Metoprolol',generic:'metoprolol tartrate/succinate',
+    moa:'Selective β1-adrenoceptor antagonist; reduces heart rate and myocardial oxygen demand without significant β2 blockade at therapeutic doses',
+    half_life:'3–7 h (tartrate IR); 12–22 h (succinate XR)',
+    indications:['Hypertension','Stable angina pectoris','Heart failure (HFrEF)','Post-MI secondary prevention','Atrial fibrillation (rate control)'],
+    adrs:['Bradycardia','Fatigue / lethargy','Cold extremities','Hypotension','Bronchospasm (high doses)','Impaired glucose tolerance'],
+    metabolism:['CYP2D6 (major substrate)','Extensive hepatic first-pass','Active metabolites: α-hydroxymetoprolol']},
+  d2:{id:'d2',name:'Atenolol',generic:'atenolol',
+    moa:'Selective β1-adrenoceptor antagonist; hydrophilic — does not cross BBB readily',
+    half_life:'6–7 h',
+    indications:['Hypertension','Angina pectoris','Post-MI secondary prevention'],
+    adrs:['Bradycardia','Fatigue','Cold extremities','Rebound hypertension on abrupt withdrawal'],
+    metabolism:['Minimal hepatic metabolism','Renally excreted unchanged (~50%)','Dose-adjust in renal impairment']},
+  d3:{id:'d3',name:'Carvedilol',generic:'carvedilol',
+    moa:'Non-selective β1/β2-blocker + α1-blocker; vasodilation via α1 blockade reduces afterload',
+    half_life:'7–10 h',
+    indications:['Heart failure (HFrEF)','Hypertension','Post-MI LV dysfunction'],
+    adrs:['Dizziness / orthostatic hypotension (α1 blockade)','Fatigue','Bradycardia','Weight gain'],
+    metabolism:['CYP2D6 and CYP2C9 (major)','Extensive hepatic first-pass (~85%)','Stereoselective metabolism']},
+  d4:{id:'d4',name:'Lisinopril',generic:'lisinopril',
+    moa:'Competitive inhibitor of ACE; prevents conversion of angiotensin I → II; reduces aldosterone secretion and bradykinin degradation',
+    half_life:'12 h',
+    indications:['Hypertension','Heart failure','Post-MI','Diabetic nephropathy'],
+    adrs:['Dry cough (bradykinin)','Angioedema (rare, serious)','Hyperkalemia','Fetotoxicity (CI in pregnancy)','First-dose hypotension'],
+    metabolism:['Not hepatically metabolised (active drug, not prodrug)','Renally excreted unchanged','Dose-adjust in renal impairment']},
+  d5:{id:'d5',name:'Ramipril',generic:'ramipril',
+    moa:'Prodrug; hydrolysed to ramiprilat, a high-affinity ACE inhibitor with long tissue-binding duration',
+    half_life:'13–17 h (ramiprilat)',
+    indications:['Hypertension','Heart failure','Post-MI','CV risk reduction (HOPE trial)','Diabetic nephropathy'],
+    adrs:['Dry cough','Angioedema','Hyperkalemia','Teratogenicity','Renal impairment (bilateral RAS)'],
+    metabolism:['Hepatic esterases → ramiprilat (active)','CYP minor role','Renal excretion']},
+  d6:{id:'d6',name:'Atorvastatin',generic:'atorvastatin calcium',
+    moa:'Competitive HMG-CoA reductase inhibitor; reduces hepatic cholesterol synthesis → upregulates LDL-R → increased LDL clearance',
+    half_life:'14 h (active metabolites up to 20–30 h)',
+    indications:['Primary hypercholesterolaemia','Combined hyperlipidaemia','CV risk reduction (primary & secondary prevention)','Familial hypercholesterolaemia'],
+    adrs:['Myalgia / myopathy','Rhabdomyolysis (rare)','Elevated transaminases','New-onset diabetes','Headache'],
+    metabolism:['CYP3A4 (major substrate)','Active metabolites (ortho- and para-OH atorvastatin)','Biliary excretion','Substrate for OATP1B1']},
+  d7:{id:'d7',name:'Amoxicillin',generic:'amoxicillin trihydrate',
+    moa:'Aminopenicillin; binds PBPs → inhibits peptidoglycan cross-linking → bactericidal; extended spectrum vs. gram-negatives cf. ampicillin',
+    half_life:'1–1.5 h',
+    indications:['Otitis media','Community-acquired pneumonia','Streptococcal pharyngitis','UTI (susceptible organisms)','H. pylori eradication (triple therapy)'],
+    adrs:['Diarrhoea / GI upset','Maculopapular rash','Hypersensitivity / anaphylaxis','C. difficile colitis','Antibiotic-associated diarrhoea'],
+    metabolism:['Minimal hepatic metabolism','Primarily renal excretion (tubular secretion)','Probenecid increases levels']},
+};
+
+const ATS = [
+  {id:'a1',slug:'moa',        label:'Mechanism of Action',    shape:'scalar'},
+  {id:'a2',slug:'half_life',  label:'Half-life',              shape:'scalar'},
+  {id:'a3',slug:'indications',label:'Indications',            shape:'list'},
+  {id:'a4',slug:'adrs',       label:'Adverse Drug Reactions', shape:'list'},
+  {id:'a5',slug:'metabolism', label:'Metabolism / CYP',       shape:'list'},
+  {id:'a6',slug:'ddis',       label:'Major Drug Interactions',shape:'relational'},
+];
+
+// ─── FSRS-5 (mirrors app/services/fsrs.py) ────────────────────────────────────
+
+const DECAY = -0.5;
+const FACTOR = Math.pow(0.9, 1/DECAY) - 1;
+const W = [0.40255,1.18385,3.1262,15.4722,7.2102,0.5316,1.0651,0.06408,
+           1.46001,0.14763,1.11929,2.21913,0.01547,0.19952,0.98707,0.2521,
+           2.2604,0.48,0.64];
+
+const cl = (v,lo,hi) => Math.max(lo,Math.min(hi,v));
+const initS = r => W[r-1];
+const initD = r => cl(W[4]-Math.exp(W[5]*(r-1))+1, 1, 10);
+const nextD = (d,r) => cl(W[6]*initD(3)+(1-W[6])*(d-W[7]*(r-3)), 1, 10);
+const fc = (el,s) => Math.pow(1+FACTOR*el/s, DECAY);
+const recallS = (d,s,r,rating) => {
+  const hp = rating===2?W[15]:1, eb = rating===4?W[16]:1;
+  return s*(Math.exp(W[8])*(11-d)*Math.pow(s,-W[9])*(Math.exp((1-r)*W[10])-1)*hp*eb+1);
+};
+const forgetS = (d,s,r) => W[11]*Math.pow(d,-W[12])*(Math.pow(s+1,W[13])-1)*Math.exp((1-r)*W[14]);
+const fsrsInt = s => Math.max(1, Math.round(s));
+
+function fsrsSched(srs, rating, now) {
+  const {state, stability:s, difficulty:d, lastReview} = srs;
+  const el = lastReview ? (now-lastReview)/86400000 : 0;
+  if (state==='new') {
+    const ns=initS(rating), nd=initD(rating);
+    return rating<=2 ? {state:'learning',  stability:ns,difficulty:nd,days:1}
+                     : {state:'review',    stability:ns,difficulty:nd,days:fsrsInt(ns)};
+  }
+  if (state==='learning'||state==='relearning') {
+    const nd=nextD(d,rating), ns=s*Math.exp(W[17]*(rating-3+W[18]));
+    return rating<=2 ? {state,             stability:ns,difficulty:nd,days:1}
+                     : {state:'review',    stability:ns,difficulty:nd,days:fsrsInt(ns)};
+  }
+  // review
+  const r=fc(el,s), nd=nextD(d,rating);
+  if (rating===1) { const ns=forgetS(d,s,r); return {state:'relearning',stability:ns,difficulty:nd,days:1}; }
+  const ns=recallS(d,s,r,rating);
+  return {state:'review',stability:ns,difficulty:nd,days:fsrsInt(ns)};
+}
+
+// ─── App state ────────────────────────────────────────────────────────────────
+
+const st = {
+  step:'browse', selectedClassId:null, selectedClassName:'',
+  availableDrugs:[], selectedDrugIds:new Set(),
+  selectedAtIds:new Set(ATS.map(a=>a.id)),
+  studyMode:'flashcard', expandedClasses:new Set(['c1','c5']),
+  cards:[], cardIndex:0, revealed:false,
+  srsState:{}, lastResult:null,
+};
+
+const cardKey = (dId,aId) => `${dId}|${aId}`;
+const getCardSrs = (dId,aId) => st.srsState[cardKey(dId,aId)] ||
+  {state:'new',stability:null,difficulty:null,lastReview:null,reviewCount:0};
+
+function getContent(drug, at) {
+  if (at.slug==='moa')         return {shape:'scalar',value:drug.moa};
+  if (at.slug==='half_life')   return {shape:'scalar',value:drug.half_life};
+  if (at.slug==='indications') return {shape:'list',  value:drug.indications};
+  if (at.slug==='adrs')        return {shape:'list',  value:drug.adrs};
+  if (at.slug==='metabolism')  return {shape:'list',  value:drug.metabolism};
+  return {shape:'relational', value:[]};
+}
+
+function collectDrugs(classId) {
+  function find(nodes,id){ for(const n of nodes){if(n.id===id)return n;const f=find(n.children,id);if(f)return f;} return null; }
+  function ids(n){ return [n.id,...n.children.flatMap(ids)]; }
+  const node=find(DRUG_CLASSES,classId); if(!node) return [];
+  const seen=new Set(), out=[];
+  for(const cid of ids(node)) for(const d of (DBY[cid]||[])) if(!seen.has(d.id)){seen.add(d.id);out.push(d);}
+  return out.sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+// ─── Presets ──────────────────────────────────────────────────────────────────
+
+function applyPreset(name) {
+  Object.assign(st,{step:'browse',selectedClassId:null,selectedClassName:'',
+    availableDrugs:[],selectedDrugIds:new Set(),
+    selectedAtIds:new Set(ATS.map(a=>a.id)),
+    studyMode:'flashcard',cards:[],cardIndex:0,revealed:false,lastResult:null});
+  if(name==='reset'){render();return;}
+  if(name==='betablockers'){
+    st.selectedClassId='c2';st.selectedClassName='Beta-Blockers';
+    st.availableDrugs=collectDrugs('c2');
+    st.selectedDrugIds=new Set(['d1','d2','d3']);
+    st.selectedAtIds=new Set(['a1','a2']);
+    st.step='configure';
+  } else if(name==='aceinhibitors'){
+    st.selectedClassId='c3';st.selectedClassName='ACE Inhibitors';
+    st.availableDrugs=collectDrugs('c3');
+    st.selectedDrugIds=new Set(['d4','d5']);
+    st.studyMode='table'; st.step='configure';
+  } else if(name==='fullcv'){
+    st.selectedClassId='c1';st.selectedClassName='Cardiovascular';
+    st.availableDrugs=collectDrugs('c1');
+    st.selectedDrugIds=new Set(['d1','d2','d3','d4','d5','d6']);
+    st.selectedAtIds=new Set(['a1','a3','a4']);
+    st.step='configure';
+  }
+  render();
+}
+
+// ─── Handlers ─────────────────────────────────────────────────────────────────
+
+function handleClassClick(id,name){
+  st.selectedClassId=id; st.selectedClassName=name;
+  st.availableDrugs=collectDrugs(id);
+  st.selectedDrugIds=new Set(); st.step='drugs'; render();
+}
+function toggleExpand(id,e){e.stopPropagation();st.expandedClasses.has(id)?st.expandedClasses.delete(id):st.expandedClasses.add(id);render();}
+function toggleDrug(id){st.selectedDrugIds.has(id)?st.selectedDrugIds.delete(id):st.selectedDrugIds.add(id);render();}
+function toggleAt(id){st.selectedAtIds.has(id)?st.selectedAtIds.delete(id):st.selectedAtIds.add(id);render();}
+function selectAllDrugs(){st.selectedDrugIds=new Set(st.availableDrugs.map(d=>d.id));render();}
+function clearDrugs(){st.selectedDrugIds=new Set();render();}
+function goConfig(){st.step='configure';render();}
+function setMode(m){st.studyMode=m;render();}
+
+function startStudy(){
+  const drugs=st.availableDrugs.filter(d=>st.selectedDrugIds.has(d.id));
+  const ats=ATS.filter(a=>st.selectedAtIds.has(a.id));
+  st.cards=drugs.flatMap(d=>ats.map(at=>({drug:DD[d.id],at})));
+  st.cardIndex=0;st.revealed=false;st.lastResult=null;st.step='study';render();
+}
+
+function revealCard(){st.revealed=true;render();}
+
+function rateCard(rating){
+  const card=st.cards[st.cardIndex];
+  const key=cardKey(card.drug.id,card.at.id);
+  const srs=getCardSrs(card.drug.id,card.at.id);
+  const now=Date.now();
+  const res=fsrsSched(srs,rating,now);
+  st.srsState[key]={state:res.state,stability:res.stability,difficulty:res.difficulty,
+    lastReview:now,reviewCount:(srs.reviewCount||0)+1};
+  st.lastResult={rating,...res};
+  render();
+  setTimeout(()=>{
+    st.lastResult=null;
+    if(st.cardIndex+1>=st.cards.length){resetToStart();}
+    else{st.cardIndex++;st.revealed=false;render();}
+  },1300);
+}
+
+function prevCard(){if(st.cardIndex>0){st.cardIndex--;st.revealed=false;st.lastResult=null;render();}}
+function skipCard(){
+  st.lastResult=null;
+  if(st.cardIndex+1>=st.cards.length){resetToStart();}else{st.cardIndex++;st.revealed=false;render();}
+}
+function resetToStart(){st.step='browse';st.cards=[];st.cardIndex=0;st.revealed=false;st.lastResult=null;render();}
+
+// ─── Render helpers ───────────────────────────────────────────────────────────
+
+const STATE_CLS = {new:'state-new',learning:'state-learning',relearning:'state-relearning',review:'state-review'};
+const RATING_NAME = ['','Again','Hard','Good','Easy'];
+
+function renderTree(nodes){
+  return nodes.map(n=>{
+    const hasC=n.children.length>0, isEx=st.expandedClasses.has(n.id), isSel=st.selectedClassId===n.id;
+    return `<div class="class-item${isSel?' selected':''}" onclick="handleClassClick('${n.id}','${n.name}')">
+      <div style="display:flex;align-items:center;gap:3px">
+        ${hasC?`<button class="expand-btn" onclick="toggleExpand('${n.id}',event)">${isEx?'▼':'▶'}</button>`:'<span style="width:14px"></span>'}
+        <div><div class="class-name">${n.name}</div><div class="class-desc">${n.desc}</div></div>
+      </div>
+    </div>${hasC&&isEx?`<div class="class-children">${renderTree(n.children)}</div>`:''}`;
+  }).join('');
+}
+
+function renderContentHTML(c){
+  if(!c||c.value==null) return `<span style="color:#475569;font-style:italic">No data</span>`;
+  if(c.shape==='scalar') return `<p style="color:#e2e8f0;font-size:12px;line-height:1.65">${c.value}</p>`;
+  if(c.shape==='list') return `<ol style="padding-left:16px;color:#cbd5e1;font-size:11px;line-height:1.75">${c.value.map(i=>`<li>${i}</li>`).join('')}</ol>`;
+  return `<span style="color:#475569;font-size:11px;font-style:italic">No interactions in mock data</span>`;
+}
+
+function renderFsrsPreview(srs){
+  const now=Date.now();
+  return `<table class="fsrs-table">
+    <thead><tr><th>Rating</th><th>→ State</th><th>Stability</th><th>Next review</th></tr></thead>
+    <tbody>${[1,2,3,4].map(r=>{
+      const res=fsrsSched(srs,r,now);
+      return `<tr class="fsrs-tr${r}"><td class="rating-col">${RATING_NAME[r]}</td><td>${res.state}</td><td>${res.stability.toFixed(1)}d</td><td><strong>+${res.days}d</strong></td></tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+// ─── Main render ──────────────────────────────────────────────────────────────
+
+function render(){
+  // Step indicator
+  const STEPS=[{k:'browse',l:'1. Class'},{k:'drugs',l:'2. Drugs'},{k:'configure',l:'3. Configure'},{k:'study',l:'4. Study'}];
+  const ci=STEPS.findIndex(s=>s.k===st.step);
+  document.getElementById('step-indicator').innerHTML=STEPS.map((s,i)=>
+    `<span class="step-dot ${i<ci?'done':i===ci?'active':'future'}">${s.l}</span>${i<3?'<span class="step-sep">›</span>':''}`
+  ).join('');
+
+  // Class browser
+  const cb=document.getElementById('class-browser');
+  cb.style.display=st.step==='study'?'none':'block';
+  document.getElementById('class-tree').innerHTML=renderTree(DRUG_CLASSES);
+
+  // Sim main
+  const el=document.getElementById('sim-main');
+  if(st.step==='browse'){
+    el.innerHTML=`<div class="browse-placeholder"><div class="emoji">💊</div><p>Select a drug class from the left to begin.</p></div>`;
+  } else if(st.step==='drugs'||st.step==='configure'){
+    renderSetup(el);
+  } else if(st.step==='study'){
+    st.studyMode==='flashcard'?renderFlashcard(el):renderTable(el);
+  }
+
+  renderExplain();
+  renderPrompt();
+}
+
+function renderSetup(el){
+  const drugHTML=st.availableDrugs.map(d=>`
+    <div class="drug-item${st.selectedDrugIds.has(d.id)?' selected':''}" onclick="toggleDrug('${d.id}')">
+      <input type="checkbox"${st.selectedDrugIds.has(d.id)?' checked':''} onclick="event.stopPropagation();toggleDrug('${d.id}')">
+      <div><div class="drug-name">${d.name}</div><div class="drug-generic">${d.generic}</div></div>
+    </div>`).join('');
+
+  let configHTML='';
+  if(st.step==='configure'){
+    const atHTML=ATS.map(a=>`
+      <div class="at-item${st.selectedAtIds.has(a.id)?' selected':''}" onclick="toggleAt('${a.id}')">
+        <input type="checkbox"${st.selectedAtIds.has(a.id)?' checked':''} onclick="event.stopPropagation();toggleAt('${a.id}')">
+        <div><div class="at-label">${a.label}</div><div class="at-shape">${a.shape}</div></div>
+      </div>`).join('');
+    const canStart=st.selectedDrugIds.size>0&&st.selectedAtIds.size>0;
+    configHTML=`
+      <div class="divider"></div>
+      <div class="section-header">Attributes to study</div>
+      <div class="at-list">${atHTML}</div>
+      <div class="section-header" style="margin-top:14px">Study mode</div>
+      <div class="mode-btns">
+        <button class="mode-btn${st.studyMode==='flashcard'?' active':''}" onclick="setMode('flashcard')">🃏 Flashcard</button>
+        <button class="mode-btn${st.studyMode==='table'?' active':''}" onclick="setMode('table')">📊 Table</button>
+      </div>
+      <button class="btn-success"${canStart?'':' disabled'} onclick="startStudy()">Start studying →</button>`;
+  }
+
+  el.innerHTML=`<div class="sim-inner">
+    <div class="section-header">${st.selectedClassName} — Select drugs</div>
+    <div class="select-actions">
+      <button class="link-btn" onclick="selectAllDrugs()">Select all</button>
+      <button class="link-btn" onclick="clearDrugs()">Clear</button>
+    </div>
+    <div class="drug-list">${drugHTML}</div>
+    ${st.step==='drugs'&&st.selectedDrugIds.size>0?`<button class="btn-primary" onclick="goConfig()">Configure session →</button>`:''}
+    ${configHTML}
+  </div>`;
+}
+
+function renderFlashcard(el){
+  if(!st.cards.length){el.innerHTML=`<div class="browse-placeholder">No cards. <button class="link-btn" onclick="resetToStart()">Start over</button></div>`;return;}
+  const card=st.cards[st.cardIndex];
+  const srs=getCardSrs(card.drug.id,card.at.id);
+  const content=getContent(card.drug,card.at);
+  const pct=(st.cardIndex+1)/st.cards.length*100;
+  el.innerHTML=`<div id="flashcard-area">
+    <div class="progress-wrap">
+      <span class="progress-label">${st.cardIndex+1} / ${st.cards.length}</span>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div class="flashcard">
+      <div class="card-attr-row">
+        <span class="card-attr">${card.at.label}</span>
+        <span class="card-state-badge ${STATE_CLS[srs.state]||'state-new'}">${srs.state}</span>
+      </div>
+      <div class="card-drug-name">${card.drug.name}</div>
+      <div class="card-generic">${card.drug.generic}</div>
+      ${!st.revealed?`
+        <button class="reveal-btn" onclick="revealCard()">Show answer</button>
+      `:`
+        <div class="card-answer">${renderContentHTML(content)}</div>
+        ${st.lastResult?`
+          <div class="feedback-msg">
+            Rated <strong>${RATING_NAME[st.lastResult.rating]}</strong> →
+            next review in <strong>${st.lastResult.days}</strong> day${st.lastResult.days===1?'':'s'}
+            · stability ${st.lastResult.stability.toFixed(1)}d · advancing…
+          </div>
+        `:`
+          <div class="rating-btns">
+            <button class="rating-btn r1-btn" onclick="rateCard(1)">Again</button>
+            <button class="rating-btn r2-btn" onclick="rateCard(2)">Hard</button>
+            <button class="rating-btn r3-btn" onclick="rateCard(3)">Good</button>
+            <button class="rating-btn r4-btn" onclick="rateCard(4)">Easy</button>
+          </div>
+        `}
+      `}
+    </div>
+    <div class="card-nav">
+      <button class="nav-btn" onclick="prevCard()"${st.cardIndex===0?' disabled':''}>← Prev</button>
+      ${!st.revealed?`<button class="nav-btn" onclick="skipCard()">${st.cardIndex+1>=st.cards.length?'Finish':'Skip →'}</button>`:''}
+      <button class="nav-btn" onclick="resetToStart()">Exit</button>
+    </div>
+  </div>`;
+}
+
+function renderTable(el){
+  const drugs=st.availableDrugs.filter(d=>st.selectedDrugIds.has(d.id));
+  const ats=ATS.filter(a=>st.selectedAtIds.has(a.id));
+  const headers=ats.map(a=>`<th>${a.label}</th>`).join('');
+  const rows=drugs.map(d=>{
+    const drug=DD[d.id];
+    const cells=ats.map(at=>{
+      const c=getContent(drug,at);
+      let html;
+      if(!c||c.value==null) html=`<span style="color:#334155">—</span>`;
+      else if(c.shape==='scalar') html=`<span style="font-size:11px">${c.value}</span>`;
+      else if(c.shape==='list') html=`<ul style="font-size:11px;padding-left:13px;line-height:1.6">${c.value.map(i=>`<li>${i}</li>`).join('')}</ul>`;
+      else html=`<span style="color:#334155;font-size:11px;font-style:italic">—</span>`;
+      return `<td>${html}</td>`;
+    }).join('');
+    return `<tr><td class="row-header">${drug.name}<div style="font-size:9px;color:#475569;font-weight:400">${drug.generic}</div></td>${cells}</tr>`;
+  }).join('');
+  el.innerHTML=`
+    <div style="padding:10px 14px;border-bottom:1px solid #1e293b;display:flex;align-items:center;gap:12px">
+      <button class="link-btn" onclick="resetToStart()">← New session</button>
+      <span style="color:#475569;font-size:11px">${drugs.length} drug${drugs.length!==1?'s':''} × ${ats.length} attribute${ats.length!==1?'s':''}</span>
+    </div>
+    <div id="table-scroll">
+      <table class="comparison-table">
+        <thead><tr><th>Drug</th>${headers}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ─── Explain panel ────────────────────────────────────────────────────────────
+
+function renderExplain(){
+  const el=document.getElementById('explain-panel');
+  if(st.step==='browse'){
+    el.innerHTML=`
+      <div class="explain-step">Step 1</div>
+      <div class="explain-title">Drug Class Hierarchy</div>
+      <div class="explain-body">Drugs are organized in a <strong>self-referential tree</strong>. Each class can have sub-classes. Selecting a parent class automatically includes drugs from all descendants — the backend uses a <strong>recursive CTE</strong> to traverse the tree.</div>
+      <div class="explain-box">
+        <h4>Current tree</h4>
+        <div style="font-family:monospace;font-size:11px;line-height:2;color:#64748b">
+          📁 Cardiovascular<br>
+          &nbsp;&nbsp;📁 Beta-Blockers <span style="color:#334155">← 3 drugs</span><br>
+          &nbsp;&nbsp;📁 ACE Inhibitors <span style="color:#334155">← 2 drugs</span><br>
+          &nbsp;&nbsp;📁 Statins <span style="color:#334155">← 1 drug</span><br>
+          📁 Antibiotics<br>
+          &nbsp;&nbsp;📁 Beta-Lactams<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;📁 Penicillins <span style="color:#334155">← 1 drug</span>
+        </div>
+      </div>
+      <div class="explain-body" style="margin-top:4px">Click any class on the left to load its drugs and proceed to step 2.</div>`;
+  } else if(st.step==='drugs'){
+    el.innerHTML=`
+      <div class="explain-step">Step 2</div>
+      <div class="explain-title">Drug Selection</div>
+      <div class="explain-body">You selected <strong>${st.selectedClassName}</strong> — ${st.availableDrugs.length} drug${st.availableDrugs.length!==1?'s':''} available. Choose a subset to study. Studying 2–4 related drugs works well for spotting differences.</div>
+      <div class="explain-box">
+        <h4>Available drugs</h4>
+        <div style="font-size:11px;color:#94a3b8;line-height:2">${st.availableDrugs.map(d=>`• <strong style="color:#cbd5e1">${d.name}</strong> <span style="color:#475569">${d.generic}</span>`).join('<br>')}</div>
+      </div>
+      <div class="explain-body" style="margin-top:4px">Select at least one drug, then click <strong>Configure session →</strong>.</div>`;
+  } else if(st.step==='configure'){
+    const selDrugs=st.availableDrugs.filter(d=>st.selectedDrugIds.has(d.id));
+    const selAts=ATS.filter(a=>st.selectedAtIds.has(a.id));
+    const cards=selDrugs.length*selAts.length;
+    el.innerHTML=`
+      <div class="explain-step">Step 3</div>
+      <div class="explain-title">Configure Your Session</div>
+      <div class="explain-body">Select which <strong>attribute types</strong> to study and pick a study mode. The 6 attributes differ in their <em>shape</em> — how data is stored and rendered.</div>
+      <div class="explain-box">
+        <h4>Attribute shapes</h4>
+        <div class="shape-item"><span class="shape-tag">scalar</span><div style="font-size:11px;color:#94a3b8;line-height:1.5"><strong style="color:#cbd5e1">Single text value</strong> — MOA, half-life. Stored in <code style="font-family:monospace;font-size:10px">drugs.attributes JSONB</code>.</div></div>
+        <div class="shape-item"><span class="shape-tag">list</span><div style="font-size:11px;color:#94a3b8;line-height:1.5"><strong style="color:#cbd5e1">Array of items</strong> — indications, ADRs, metabolism. Stored in separate tables.</div></div>
+        <div class="shape-item"><span class="shape-tag">relational</span><div style="font-size:11px;color:#94a3b8;line-height:1.5"><strong style="color:#cbd5e1">Drug↔drug pairs</strong> — interactions. Canonical-ordered: always drug_a_id &lt; drug_b_id.</div></div>
+      </div>
+      <div class="explain-box" style="margin-top:4px">
+        <h4>Session summary</h4>
+        <div style="font-size:11px;color:#94a3b8;line-height:1.9">
+          <strong style="color:#cbd5e1">${selDrugs.length}</strong> drug${selDrugs.length!==1?'s':''}: ${selDrugs.map(d=>d.name).join(', ')||'—'}<br>
+          <strong style="color:#cbd5e1">${selAts.length}</strong> attribute${selAts.length!==1?'s':''}: ${selAts.map(a=>a.label).join(', ')||'—'}<br>
+          Mode: <strong style="color:#cbd5e1">${st.studyMode}</strong><br>
+          ${st.studyMode==='flashcard'?`Cards: <strong style="color:#60a5fa">${cards}</strong> (${selDrugs.length}×${selAts.length})`:`Grid: <strong style="color:#60a5fa">${selDrugs.length}×${selAts.length}</strong>`}
+        </div>
+      </div>`;
+  } else if(st.step==='study'){
+    if(st.studyMode==='flashcard'&&st.cards.length>0){
+      const card=st.cards[st.cardIndex];
+      const srs=getCardSrs(card.drug.id,card.at.id);
+      el.innerHTML=`
+        <div class="explain-step">Step 4 — Flashcard Mode</div>
+        <div class="explain-title">FSRS-5 Spaced Repetition</div>
+        <div class="explain-body">Each card tracks <strong>stability</strong> (days until ~10% forgetting) and <strong>difficulty</strong> (1–10). Your rating updates both using the FSRS-5 algorithm. Cards are sorted by SRS due-rank at session start.</div>
+        <div class="explain-box">
+          <h4>Current card: ${card.drug.name} — ${card.at.label}</h4>
+          <div class="srs-stats">
+            <div class="srs-stat"><div class="srs-stat-label">State</div><div class="srs-stat-value" style="font-size:13px">${srs.state}</div></div>
+            <div class="srs-stat"><div class="srs-stat-label">Reviews</div><div class="srs-stat-value">${srs.reviewCount||0}</div></div>
+            ${srs.stability!=null?`
+              <div class="srs-stat"><div class="srs-stat-label">Stability</div><div class="srs-stat-value">${srs.stability.toFixed(1)}<span class="srs-stat-unit">d</span></div></div>
+              <div class="srs-stat"><div class="srs-stat-label">Difficulty</div><div class="srs-stat-value">${srs.difficulty.toFixed(1)}<span class="srs-stat-unit">/10</span></div></div>
+            `:`<div class="srs-stat" style="grid-column:span 2"><div class="srs-stat-label">Status</div><div class="srs-stat-value" style="font-size:11px;color:#475569">First review</div></div>`}
+          </div>
+        </div>
+        ${st.revealed&&!st.lastResult?`
+          <div class="explain-box" style="margin-top:4px">
+            <h4>What each rating would produce</h4>
+            ${renderFsrsPreview(srs)}
+          </div>
+        `:''}
+        ${st.lastResult?`
+          <div class="explain-box" style="margin-top:4px;border-color:#1e3a8a">
+            <h4>Result: rated ${RATING_NAME[st.lastResult.rating]}</h4>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.9">
+              New state: <strong style="color:#f1f5f9">${st.lastResult.state}</strong><br>
+              Stability: <strong style="color:#f1f5f9">${st.lastResult.stability.toFixed(2)} days</strong><br>
+              Next review: <strong style="color:#60a5fa">+${st.lastResult.days} day${st.lastResult.days===1?'':'s'}</strong>
+            </div>
+          </div>
+        `:''}
+        <div class="explain-box" style="margin-top:4px">
+          <h4>State transitions</h4>
+          <div style="font-size:10px;color:#64748b;line-height:2.1">
+            <span class="state-pill state-new">new</span> <span style="color:#334155">+ Again/Hard</span> → <span class="state-pill state-learning">learning</span> (1 day)<br>
+            <span class="state-pill state-new">new</span> <span style="color:#334155">+ Good/Easy</span> → <span class="state-pill state-review">review</span> (n days)<br>
+            <span class="state-pill state-review">review</span> <span style="color:#334155">+ Again</span> → <span class="state-pill state-relearning">relearning</span> (1 day)<br>
+            <span class="state-pill state-review">review</span> <span style="color:#334155">+ Hard/Good/Easy</span> → <span class="state-pill state-review">review</span>
+          </div>
+        </div>`;
+    } else {
+      const drugs=st.availableDrugs.filter(d=>st.selectedDrugIds.has(d.id));
+      const ats=ATS.filter(a=>st.selectedAtIds.has(a.id));
+      el.innerHTML=`
+        <div class="explain-step">Step 4 — Table Mode</div>
+        <div class="explain-title">Comparison Grid</div>
+        <div class="explain-body">A <strong>${drugs.length}×${ats.length}</strong> grid of every selected drug against every selected attribute. Useful for spotting differences (e.g. half-life, CYP enzymes). No SRS tracking — table mode is read-only.</div>
+        <div class="explain-box">
+          <h4>How the backend builds this</h4>
+          <div class="explain-body"><code style="font-family:monospace;font-size:10px;background:#1e293b;padding:1px 5px;border-radius:3px">GET /study/table?drug_ids=…&attribute_type_ids=…</code><br><br>Returns a flat list of cells — one per (drug, attribute) pair. The frontend pivots them into the grid you see here. Cell content varies by attribute <em>shape</em>: scalar text, ordered lists, or drug-interaction pairs.</div>
+        </div>
+        <div class="explain-box" style="margin-top:4px">
+          <h4>Drugs in this table</h4>
+          <div style="font-size:11px;color:#94a3b8;line-height:1.9">${drugs.map(d=>`• <strong style="color:#cbd5e1">${d.name}</strong>`).join('<br>')}</div>
+        </div>`;
+    }
+  }
+}
+
+// ─── Prompt bar ───────────────────────────────────────────────────────────────
+
+function renderPrompt(){
+  const el=document.getElementById('prompt-text');
+  if(st.step==='browse'){
+    el.textContent='Explore the app: select a drug class from the left sidebar to begin the study session wizard.';
+  } else if(st.step==='drugs'){
+    const n=st.selectedDrugIds.size;
+    el.textContent=`Class selected: ${st.selectedClassName} (${st.availableDrugs.length} drugs). ${n?`${n} selected — click "Configure session →" to continue.`:'Check the boxes to select drugs to study.'}`;
+  } else if(st.step==='configure'){
+    const drugs=st.availableDrugs.filter(d=>st.selectedDrugIds.has(d.id)).map(d=>d.name);
+    const ats=ATS.filter(a=>st.selectedAtIds.has(a.id)).map(a=>a.label);
+    if(!drugs.length||!ats.length){el.textContent='Select at least one drug and one attribute type to enable the Start button.';return;}
+    const count=drugs.length*ats.length;
+    el.textContent=st.studyMode==='flashcard'
+      ?`Ready: ${drugs.join(', ')} · ${ats.join(', ')} · Flashcard mode · ${count} card${count!==1?'s':''}. Click "Start studying →".`
+      :`Ready: ${drugs.join(', ')} · ${ats.join(', ')} · Table mode · ${drugs.length}×${ats.length} grid. Click "Start studying →".`;
+  } else if(st.step==='study'){
+    if(st.studyMode==='flashcard'&&st.cards.length){
+      const card=st.cards[st.cardIndex];
+      const srs=getCardSrs(card.drug.id,card.at.id);
+      const note=st.lastResult
+        ?` Rated ${RATING_NAME[st.lastResult.rating]} → next review +${st.lastResult.days}d, stability ${st.lastResult.stability.toFixed(1)}d.`
+        :st.revealed?' Answer shown — rate your recall with Again / Hard / Good / Easy.'
+        :' Click "Show answer" to reveal the answer.';
+      el.textContent=`Card ${st.cardIndex+1}/${st.cards.length}: ${card.drug.name} — ${card.at.label}. State: ${srs.state}${srs.stability!=null?`, stability ${srs.stability.toFixed(1)}d, difficulty ${srs.difficulty.toFixed(1)}`:''}.${note}`;
+    } else {
+      const drugs=st.availableDrugs.filter(d=>st.selectedDrugIds.has(d.id));
+      const ats=ATS.filter(a=>st.selectedAtIds.has(a.id));
+      el.textContent=`Table view: ${drugs.map(d=>d.name).join(', ')} × ${ats.map(a=>a.label).join(', ')}. Scroll horizontally if needed.`;
+    }
+  }
+}
+
+function copyPrompt(){
+  navigator.clipboard.writeText(document.getElementById('prompt-text').textContent).then(()=>{
+    const btn=document.getElementById('copy-btn');
+    btn.textContent='Copied!';btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Copy prompt';btn.classList.remove('copied');},1500);
+  });
+}
+
+render();
+</script>
+</body>
+</html>
