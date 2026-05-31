@@ -63,6 +63,8 @@ npm run build      # type-check + production build
 CLAUDE.md                      ← you are here
 docs/
   schema.md                    ← full design rationale; read before touching schema
+  decisions.md                 ← architectural decisions, alternatives considered, why
+  plan.md                      ← active roadmap (task tracking)
   db/
     migrations/
       001_core_schema.sql      ← drugs, classes, attributes, interactions
@@ -212,5 +214,7 @@ Update task status (`[ ]` → `[~]` → `[x]`) as you work.
 ## Updating this file
 
 At the end of any session where significant architectural decisions are made, update
-`CLAUDE.md` and `docs/schema.md` before closing out. A stale `CLAUDE.md` is worse
-than none.
+`CLAUDE.md`, `docs/schema.md`, and `docs/decisions.md` before closing out. A stale
+`CLAUDE.md` is worse than none. New decisions go in `docs/decisions.md` with
+Decision / Alternatives / Why / Status fields — see the bottom of that file for the
+template.

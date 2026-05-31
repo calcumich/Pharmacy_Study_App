@@ -297,14 +297,12 @@ is fixed in passing. All 70 tests pass (was 69/70).
 
 ---
 
-### [ ] 12. Sign-up form
+### [x] 12. Sign-up form
 
-**Goal:** New users currently can't onboard — `LoginForm` only signs in. Add a
-toggle between sign-in and sign-up that calls `supabase.auth.signUp` and
-explains the email-confirmation step.
-
-**Files to touch:** `frontend/src/App.tsx` (or extract `LoginForm` to its own
-file).
+**Done:** `LoginForm` extracted from `App.tsx` into a standalone
+`frontend/src/components/AuthForm.tsx` with a sign-in / sign-up mode toggle.
+Sign-up calls `supabase.auth.signUp` and surfaces the email-confirmation
+notice. Loading-state leak in `handleSubmit` fixed in a follow-up commit.
 
 ---
 
@@ -448,3 +446,131 @@ using `DEFAULT_W`.
 **Files to touch:** `docs/db/migrations/004_user_fsrs_config.sql` (new),
 `app/models/study.py`, `app/routers/study.py`, `app/schemas/study.py`,
 `alembic/versions/<rev>_user_fsrs_config.py` (new).
+
+---
+
+## Phase 6 — Portfolio polish
+
+The goal of this phase is to make the repo land well as a public GitHub
+portfolio project. The code already does the interesting work; this phase
+makes that legible to a visitor in under a minute.
+
+### [x] 16. README + architecture diagram
+
+**Done:** `README.md` created at repo root with a project tagline, "what's
+interesting about this codebase" highlights, a Mermaid architecture diagram,
+a walk-through of the flashcard-rating request flow, stack table, local
+setup, project structure, and a roadmap link. Diagram is inline Mermaid so
+it renders on GitHub without an image asset. Recruiters/visitors can grok
+the design in ~60 seconds without reading code.
+
+---
+
+### [ ] 17. Seeded demo dataset (~50 drugs)
+
+**Goal:** First-run experience currently shows 7 mock drugs in mock mode
+and an empty DB in real mode. Land a realistic seed of ~50 drugs across
+several therapeutic classes so a visitor running `docker compose up` (or
+hitting the live demo) sees a usable app, not an empty shell.
+
+**Context:**
+- This is distinct from task 15 (ingestion pipeline). Ingestion is the
+  general-purpose tool; this task is the small curated set that ships in
+  the repo as the demo baseline.
+- Should cover enough breadth to show off all four card shapes
+  (text / list / table / relational DDIs) and the class hierarchy.
+- Suggested coverage: a handful of β-lactams, macrolides, fluoroquinolones,
+  PPIs, statins, ACE inhibitors, β-blockers — picked because they have
+  well-known interactions and clear class structure.
+
+**Steps:**
+1. Decide whether the seed lives as raw SQL (`docs/db/migrations/004_seed_demo_drugs.sql`)
+   or as a Python script that uses the ORM. SQL is simpler and matches the
+   existing migration pattern; Python is easier to keep in sync with model
+   changes. Pick one and commit.
+2. Author seed data for ~50 drugs with realistic mechanism, indications,
+   ADRs, and at least 20–30 canonical-ordered interactions.
+3. Make the seed idempotent (use `ON CONFLICT DO NOTHING` or check-then-
+   insert) so re-running doesn't double up.
+4. Update `docker-compose.yml` or the README's quick-start to apply the seed
+   automatically on first boot.
+5. Replace the static 7-drug mock dataset in `frontend/src/api/mock.ts` with
+   a representative subset of the seed so mock mode and real mode feel
+   continuous.
+
+**Files to touch:** `docs/db/migrations/004_seed_demo_drugs.sql` (new) **or**
+`scripts/seed_demo.py` (new); `frontend/src/api/mock.ts`; `README.md` if
+the quick-start changes.
+
+---
+
+### [ ] 18. Live demo deployment
+
+**Goal:** A working URL a visitor can click. The single highest-leverage
+portfolio improvement after the README.
+
+**Context:**
+- Hosting is not yet decided. Candidates:
+  - **Azure** — user has dev credits available; Container Apps + Azure
+    Postgres Flexible Server is the obvious fit, with Static Web Apps for
+    the frontend.
+  - **Fly.io / Railway / Render** — fastest path; Postgres included on
+    free/cheap tiers; cold-start tradeoffs.
+  - Frontend can go to any static host (Vercel, Netlify, Azure Static Web
+    Apps, GitHub Pages).
+- The DB can stay on Supabase regardless of where the backend runs — that
+  keeps auth simple (the JWKS dependency is already production-shaped).
+- Pick the platform when starting this task; do not commit to one now.
+
+**Steps:**
+1. Pick the platform (likely Azure given available credits) and document the
+   choice in this task's **Done** note.
+2. Containerize the backend: add a `Dockerfile` that runs `uvicorn` against
+   `app.main:app` and honours `$PORT`.
+3. Configure environment variables on the chosen host:
+   `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `CORS_ORIGINS`
+   (this depends on task 13).
+4. Deploy the frontend with `VITE_API_BASE_URL` and `VITE_SUPABASE_URL` /
+   `VITE_PUBLISHABLE_KEY` pointing at the deployed backend + Supabase
+   project.
+5. Run `alembic upgrade head` against the production DB and apply the demo
+   seed (task 17).
+6. Add the demo URL and a screenshot or GIF to `README.md`.
+7. (Optional) Document the deploy steps in `docs/deploy.md` so a fresh
+   redeploy is reproducible.
+
+**Depends on:** task 13 (configurable CORS) before going public; task 17
+(seeded dataset) for the demo to feel alive.
+
+**Files to touch:** `Dockerfile` (new), `docs/deploy.md` (optional, new),
+`README.md` (demo link + screenshot).
+
+---
+
+### [ ] 19. CI on pull requests
+
+**Goal:** A green check on every PR. Cheap signal that the project is
+maintained and the test suite isn't aspirational.
+
+**Steps:**
+1. Add `.github/workflows/ci.yml` running on push + PR:
+   - Backend job: `pip install -e ".[dev]"` then `pytest`.
+   - Frontend job: `npm ci` then `npm run build` (type-check + bundle).
+2. Add a passing-build badge to the top of `README.md`.
+
+**Files to touch:** `.github/workflows/ci.yml` (new), `README.md`.
+
+---
+
+### [ ] 20. Screenshots / demo GIF in README
+
+**Goal:** The README references a demo link and screenshots but doesn't have
+them yet. After task 18 lands, capture 2–3 screenshots (class browser,
+flashcard front + back, table view) and one short GIF of the
+browse → study → rate loop. Drop into `docs/media/` and embed near the top
+of the README.
+
+**Depends on:** task 17 (seed) and task 18 (deploy) — otherwise the
+screenshots show an empty app.
+
+**Files to touch:** `docs/media/` (new), `README.md`.
