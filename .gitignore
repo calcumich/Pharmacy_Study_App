@@ -4,6 +4,9 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .env
+.env.local
+.env.*.local
+env.local
 
 # Node
 frontend/node_modules/
@@ -14,3 +17,5 @@ alembic/versions/__pycache__/
 
 # Claude internal
 .claude/
+.notes/
+.superpowers/
