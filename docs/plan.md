@@ -337,6 +337,37 @@ status + message body), `frontend/src/App.tsx`, `FlashcardView.tsx`.
 
 ## Phase 5 — Quality of life (was Phase 4)
 
+### [ ] 15. Drug data ingestion pipeline
+
+**Goal:** Establish a repeatable ingestion pipeline for expanding the drug
+catalog without hand-editing seed data.
+
+**Context:**
+- The app's usefulness depends on having enough real drug/class/attribute data
+  in Postgres to support browsing, comparison, search, and flashcard study.
+- The repo has schema, migrations, and seed/bootstrap scripts, but no defined
+  pipeline for importing larger datasets into the canonical schema.
+- This work should map into the existing tables rather than introducing a
+  parallel storage model.
+
+**Steps:**
+1. Choose an input format and source strategy (for example curated CSV/JSON
+   files, transformed public datasets, or a staged import directory).
+2. Define a normalization pass that maps source data into `drug_classes`,
+   `drugs.attributes`, list-shape attribute tables, and canonical
+   `drug_interactions` pairs.
+3. Add an idempotent import command or script that validates rows, reports
+   rejects clearly, and upserts into Postgres safely.
+4. Add fixture-sized tests covering hierarchy import, attribute mapping, and
+   duplicate-safe interaction loading.
+5. Document the ingestion workflow and operator steps once the format is
+   stable.
+
+**Files to touch:** likely `scripts/`, backend import helpers, tests, and docs
+once the ingestion design is chosen.
+
+---
+
 ### [ ] 7. Drug search endpoint
 
 **Goal:** `GET /drugs/search?q=` — full-text search backed by the existing
