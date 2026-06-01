@@ -65,10 +65,11 @@ flowchart LR
 ### Request flow — submitting a flashcard rating
 
 1. User clicks **Good** on a revealed card in `FlashcardView`.
-2. Frontend `POST /study/review` with `{drug_id, attribute_type_id, rating}` and
-   `Authorization: Bearer <supabase_jwt>`.
-3. FastAPI `get_current_user` dependency decodes the JWT against Supabase's
-   JWKS (cached, async-safe) and extracts the `sub` claim as `user_id`.
+2. Frontend `POST /study/review` with `{drug_id, attribute_type_id, rating}`.
+   In Supabase auth mode, it also sends `Authorization: Bearer <supabase_jwt>`.
+3. FastAPI `get_current_user` dependency produces the user id. In Supabase auth
+   mode, it decodes the JWT against Supabase's JWKS (cached, async-safe) and
+   extracts the `sub` claim. In local dev auth mode, it returns `DEV_USER_ID`.
 4. Router loads the current `SrsState` row for `(user_id, drug_id)`.
 5. `fsrs.schedule()` computes new `stability`, `difficulty`, `state`,
    `due_date` from the rating.
@@ -89,24 +90,24 @@ flowchart LR
 
 ## Local setup
 
-Requires Python 3.12+, Node 20+, and Docker (for the local Postgres).
+Requires Python 3.12+ and Node 20+. Docker is optional for local Postgres.
 
 ```bash
-# 1. Start Postgres
+# 1. Optional: start Docker Postgres for local development
 docker compose up -d
 
 # 2. Backend
 python -m venv .venv && .venv\Scripts\activate     # Windows
 # source .venv/bin/activate                        # macOS/Linux
 pip install -e ".[dev]"
-cp .env.example .env                               # then fill in DATABASE_URL
+cp .env.example .env                               # then fill in mode + database values
 alembic upgrade head
 uvicorn app.main:app --reload                      # http://localhost:8000
 
 # 3. Frontend (new terminal)
 cd frontend
 npm install
-cp .env.example .env                               # VITE_USE_MOCK=true works without a backend
+cp .env.example .env                               # then fill in auth/API values
 npm run dev                                        # http://localhost:5173
 
 # 4. Tests
@@ -117,6 +118,25 @@ cd frontend && npm run build                       # type-check + production bui
 **Mock mode.** Setting `VITE_USE_MOCK=true` in `frontend/.env` swaps the entire
 API layer for static data — the app runs end-to-end with no backend or DB.
 Useful for UI work and the demo path.
+
+## Environment modes
+
+**Production/staging.** Use Supabase Cloud Auth and Supabase Cloud Postgres.
+Set backend `APP_ENV=production` or `APP_ENV=staging`, `AUTH_MODE=supabase`,
+`DATABASE_URL` to the Supabase Cloud Postgres asyncpg URL, and `SUPABASE_URL`
+to the Supabase project URL. The frontend should use `VITE_AUTH_MODE=supabase`
+with the matching `VITE_SUPABASE_URL` and `VITE_PUBLISHABLE_KEY`.
+
+**Local integration.** Use the real Supabase login flow while pointing
+`DATABASE_URL` at either Supabase Cloud Postgres or the optional Docker
+Postgres. Set backend `APP_ENV=local`, `AUTH_MODE=supabase`; set frontend
+`VITE_AUTH_MODE=supabase`. This is the mode for testing real browser auth.
+
+**Fast local dev.** Use Docker Postgres plus the fixed dev user. Set backend
+`APP_ENV=local`, `AUTH_MODE=dev`, and `DEV_USER_ID` to a stable UUID. Set
+frontend `VITE_AUTH_MODE=dev`. The frontend skips the Supabase login screen,
+and API requests do not include an `Authorization` header. `AUTH_MODE=dev` is
+rejected when `APP_ENV` is `staging` or `production`.
 
 ## Project structure
 
