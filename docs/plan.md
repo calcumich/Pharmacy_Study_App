@@ -427,7 +427,7 @@ using `DEFAULT_W`.
 - This needs a new DB table and Alembic migration.
 
 **Steps:**
-1. Add a migration `docs/db/migrations/004_user_fsrs_config.sql`:
+1. Add an Alembic revision in `alembic/versions/` that creates:
    ```sql
    CREATE TABLE user_fsrs_config (
        user_id   UUID PRIMARY KEY,
@@ -435,17 +435,17 @@ using `DEFAULT_W`.
        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
    );
    ```
+   Hand-write the `upgrade()` / `downgrade()` bodies with `op.execute(...)` —
+   follow the shape used by `alembic/versions/8d50f2cb30e1_initial_schema.py`.
 2. Add `UserFsrsConfig` SQLAlchemy model to `app/models/study.py`.
 3. Add `GET /study/fsrs-config` and `PATCH /study/fsrs-config` to
    `app/routers/study.py`.
    - GET returns the user's weights, or `DEFAULT_W` if no row exists.
    - PATCH validates that the submitted list has exactly 19 floats, then upserts.
 4. In `submit_review`, load the user's weights before calling `fsrs_schedule()`.
-5. Add an Alembic revision file in `alembic/versions/`.
 
-**Files to touch:** `docs/db/migrations/004_user_fsrs_config.sql` (new),
-`app/models/study.py`, `app/routers/study.py`, `app/schemas/study.py`,
-`alembic/versions/<rev>_user_fsrs_config.py` (new).
+**Files to touch:** `alembic/versions/<rev>_user_fsrs_config.py` (new),
+`app/models/study.py`, `app/routers/study.py`, `app/schemas/study.py`.
 
 ---
 
@@ -484,10 +484,11 @@ hitting the live demo) sees a usable app, not an empty shell.
   well-known interactions and clear class structure.
 
 **Steps:**
-1. Decide whether the seed lives as raw SQL (`docs/db/migrations/004_seed_demo_drugs.sql`)
-   or as a Python script that uses the ORM. SQL is simpler and matches the
-   existing migration pattern; Python is easier to keep in sync with model
-   changes. Pick one and commit.
+1. Decide whether the seed lives as an Alembic data-only revision in
+   `alembic/versions/` (matches the migration pattern; one apply path) or as
+   a standalone Python script under `scripts/` that uses the ORM (easier to
+   keep in sync with model changes; cleanly separated from schema migrations).
+   Pick one and commit.
 2. Author seed data for ~50 drugs with realistic mechanism, indications,
    ADRs, and at least 20–30 canonical-ordered interactions.
 3. Make the seed idempotent (use `ON CONFLICT DO NOTHING` or check-then-
@@ -498,7 +499,7 @@ hitting the live demo) sees a usable app, not an empty shell.
    a representative subset of the seed so mock mode and real mode feel
    continuous.
 
-**Files to touch:** `docs/db/migrations/004_seed_demo_drugs.sql` (new) **or**
+**Files to touch:** `alembic/versions/<rev>_seed_demo_drugs.py` (new) **or**
 `scripts/seed_demo.py` (new); `frontend/src/api/mock.ts`; `README.md` if
 the quick-start changes.
 
@@ -510,21 +511,15 @@ the quick-start changes.
 portfolio improvement after the README.
 
 **Context:**
-- Hosting is not yet decided. Candidates:
-  - **Azure** — user has dev credits available; Container Apps + Azure
-    Postgres Flexible Server is the obvious fit, with Static Web Apps for
-    the frontend.
-  - **Fly.io / Railway / Render** — fastest path; Postgres included on
-    free/cheap tiers; cold-start tradeoffs.
-  - Frontend can go to any static host (Vercel, Netlify, Azure Static Web
-    Apps, GitHub Pages).
+- Frontend hosting is decided in `docs/decisions.md` #19: Azure Static Web
+  Apps for the React/Vite static bundle, with Vercel as the fallback if SWA
+  creates more deployment friction than expected.
+- Backend hosting still follows the #15 direction: likely Azure Container Apps.
 - The DB can stay on Supabase regardless of where the backend runs — that
   keeps auth simple (the JWKS dependency is already production-shaped).
-- Pick the platform when starting this task; do not commit to one now.
 
 **Steps:**
-1. Pick the platform (likely Azure given available credits) and document the
-   choice in this task's **Done** note.
+1. Create the Azure Static Web Apps frontend resource and GitHub Actions deploy.
 2. Containerize the backend: add a `Dockerfile` that runs `uvicorn` against
    `app.main:app` and honours `$PORT`.
 3. Configure environment variables on the chosen host:

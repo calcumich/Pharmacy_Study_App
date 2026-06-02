@@ -154,8 +154,7 @@ docs/
   schema.md           DB design rationale — read before schema changes
   decisions.md        Architectural decisions: what, why, what we passed on
   plan.md             Active roadmap
-  db/migrations/      Raw SQL migrations (source of truth for schema)
-alembic/              Async Alembic env + generated revisions
+alembic/              Async Alembic env + revisions (source of truth for schema)
 tests/                pytest suites (unit + smoke)
 ```
 
