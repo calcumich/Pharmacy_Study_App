@@ -184,6 +184,10 @@ Do not create parallel `.sql` migration files.
 
 ## Conventions
 
+- Follow the AI collaboration rules in `AGENTS.md`. For non-trivial work, use
+  the deliberate-practice loop in `docs/ai-collaboration.md`: inventory
+  decisions, plan, implement in small diffs, review against the plan, and close
+  with a learning checkout.
 - Use **async SQLAlchemy** throughout — no sync sessions
 - All schema changes via **Alembic migrations** — no manual DDL, no `CREATE TABLE` in application code
 - Database connection from environment variable: `DATABASE_URL`

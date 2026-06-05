@@ -21,24 +21,157 @@ that shape the codebase as a whole.
 
 **Decision.** Use FastAPI for the HTTP layer.
 
-**Alternatives considered.**
-- **Django + Django REST Framework.** Batteries-included; built-in admin would
-  have been useful for seeding/managing drug data.
-- **Flask.** Lighter; familiar; would have worked.
-- **Litestar / Starlette directly.** Litestar has nicer DI than FastAPI in
-  some ways; Starlette is what FastAPI sits on.
+**Four main technologies considered.**
+
+### FastAPI
+
+**Shape.** Modern Python API framework built on Starlette, with Pydantic as
+the validation/schema layer. Best fit when the backend is mostly an HTTP API
+with typed request/response models, async I/O, and OpenAPI as a first-class
+artifact.
+
+**Why it fit this project.**
+- Native async matches the SQLAlchemy 2.0 + asyncpg database layer.
+- Pydantic schemas double as request/response validation *and* the source of
+  truth for the OpenAPI spec. The frontend's `types/api.ts` mirrors them by
+  hand today, but codegen is an easy next step if the surface grows.
+- Dependency injection (`Depends`) gave us a clean place to hang the JWT auth
+  dependency without middleware.
+- It keeps the backend squarely in Python, which was an explicit learning goal
+  for this project.
+
+**Costs.**
+- It is not batteries-included. Admin UI, background jobs, permissions,
+  content-management workflows, and project structure are mostly choices we
+  have to make ourselves.
+- The async stack is powerful but has more footguns than a synchronous
+  request/response app: session lifecycle, missing `await`s, and test setup
+  all require attention.
+- FastAPI's ecosystem is broad but uneven. There are many examples, but fewer
+  mature conventions than Django has.
+
+### Django + Django REST Framework
+
+**Shape.** Full-stack Python web framework with ORM, admin, auth/session
+machinery, forms, migrations, and a large ecosystem. DRF adds the API layer.
+Best fit when the application benefits from a strong default structure and
+server-side operational tools.
+
+**Why it was tempting.**
+- The Django admin would have saved real time for seeding, inspecting, and
+  correcting drug data. For this app, that is the strongest argument Django
+  had.
+- Django's ORM, migrations, auth model, permissions patterns, and project
+  layout are proven and well-documented.
+- It is easier to hand future maintenance to another Python developer because
+  Django conventions are older and more stable.
+- If we later wanted server-rendered admin/content screens, Django would give
+  us that without introducing a separate internal tool.
+
+**Costs.**
+- The framework brings a lot of machinery this app does not currently need:
+  templates, forms, sessions, built-in auth flows, and a more monolithic
+  project shape.
+- Async support exists, but Django's deepest ecosystem habits are still
+  synchronous. Since our DB layer is async, Django would either push us toward
+  sync SQLAlchemy/Django ORM or force less common async patterns.
+- DRF serializers plus Pydantic-style schemas would be another modeling layer
+  to keep straight if we still wanted OpenAPI-driven frontend types.
+
+### Flask
+
+**Shape.** Minimal Python web framework. Best fit when the application is
+small, mostly synchronous, and the developer wants to assemble the stack
+piece by piece.
+
+**Why it would have worked.**
+- The app's backend surface is not huge. Flask could route these endpoints
+  perfectly well.
+- It is familiar, simple, and easy to understand at the file-by-file level.
+- It avoids some FastAPI-specific magic around dependency injection and
+  validation.
+
+**Costs.**
+- Almost every serious backend concern becomes an explicit integration choice:
+  validation, OpenAPI generation, dependency injection, async handling, auth
+  structure, and error conventions.
+- Async Flask is possible, but it is not the natural grain of the framework in
+  the way it is for FastAPI/Starlette.
+- By the time we add schema validation, OpenAPI, typed responses, and async
+  database access, we are rebuilding much of the reason FastAPI exists.
+
+### ASP.NET Core (.NET)
+
+**Shape.** Mature, high-performance web platform for C#. Best fit when we want
+strong static typing across the backend, excellent tooling, first-class cloud
+deployment, and long-term enterprise-grade maintainability.
+
+**Why it deserved serious consideration.**
+- ASP.NET Core is arguably the strongest non-Python option here: fast runtime,
+  excellent built-in dependency injection, mature middleware, robust auth
+  primitives, strong OpenAPI support, and first-class Azure deployment.
+- The Azure story would have been cleaner. Container Apps, App Service, managed
+  identity, Key Vault, Application Insights, and CI/CD all fit .NET naturally.
+- Entity Framework Core would provide a cohesive ORM/migration story with good
+  tooling and a lot of production mileage.
+- C#'s type system is a real advantage for a backend with domain models,
+  DTOs, service boundaries, and auth/user ownership rules.
+- For portfolio purposes, a React + ASP.NET Core + Postgres app would be a very
+  credible industry stack.
+
+**Costs.**
+- It would move the backend away from the user's explicit goal of learning
+  more Python web development. That was the deciding factor.
+- The SRS algorithm and data-ingestion work are naturally Python-shaped:
+  Python is a better fit for quick algorithm experiments, scripts, notebooks,
+  and data cleanup.
+- Using .NET would likely split the learning surface: C#/.NET backend, Python
+  scripts for ingestion/experimentation, TypeScript frontend. That is a lot of
+  language/runtime context for a solo study app.
+- The project would lose the clean Python-throughline from algorithm code to
+  API services to backend tests.
+
+**Related note: Litestar / Starlette directly.**
+
+Starlette is the ASGI toolkit FastAPI sits on. Litestar is a
+FastAPI-adjacent framework with a stronger emphasis on explicit application
+structure, dependency injection, and plugin-style architecture.
+
+**Why it was interesting.**
+- Starlette directly would give maximum control with minimal framework layer.
+- Litestar has some cleaner architectural ideas than FastAPI, especially around
+  dependency injection and route/controller organization.
+- Both fit an async SQLAlchemy stack naturally.
+
+**Costs.**
+- Starlette alone would mean manually adding validation, OpenAPI, and a higher
+  level API structure.
+- Litestar is capable, but the hiring/reviewer familiarity and tutorial
+  surface are smaller than FastAPI's.
+- Neither option materially changed the project outcome enough to justify
+  choosing the less familiar path.
 
 **Why FastAPI.**
-- Native async, which matters because the whole DB layer is async.
-- Pydantic schemas double as request/response validation *and* the source of
-  truth for the OpenAPI spec — the frontend's `types/api.ts` mirrors them by
-  hand, but the option to codegen is there if the surface grows.
-- Dependency injection (`Depends`) gave us a clean place to hang the JWT
-  auth dependency without middleware.
+- It hit the learning goal: Python web development, but with a modern typed
+  API style rather than a purely traditional synchronous stack.
+- It matched the async DB/auth implementation cleanly.
+- It gave enough structure for validation, dependency injection, and OpenAPI
+  without pulling in a full Django-sized application framework.
+- It kept the SRS algorithm, ingestion scripts, backend services, and tests in
+  one language ecosystem.
 
-**What we gave up.** Django's admin would have saved real time for content
-management. We are paying for that absence in task 15 (drug ingestion
-pipeline) and task 17 (seed dataset).
+**What we gave up.**
+- Django's admin would have saved real time for content management. We are
+  paying for that absence in task 15 (drug ingestion pipeline) and task 17
+  (seed dataset).
+- ASP.NET Core would have made the Azure/backend deployment story more
+  enterprise-standard and more strongly typed end to end. We passed on it not
+  because it was weak, but because this project was also meant to build Python
+  web-dev fluency.
+- Flask would have been simpler at first, but less coherent once validation,
+  OpenAPI, async DB access, and auth dependencies were added.
+- Litestar/Starlette would have given more control, but less portfolio
+  familiarity and less obvious upside for this app.
 
 **Status.** Settled.
 
@@ -55,10 +188,16 @@ env. No sync sessions anywhere in the codebase.
 - **Mixed sync/async.** Sync ORM for migrations, async for the app.
 
 **Why async.**
-- Matches FastAPI's grain — no `run_in_threadpool` dances.
-- The auth dependency fetches Supabase's JWKS over HTTP; that call is async
-  with a shared lock for the cold-start path. A sync stack would have forced
-  a thread offload or blocked the event loop.
+- This app is mostly I/O-bound: HTTP requests, Postgres queries, and occasional
+  Supabase JWKS fetches. Async is a natural fit for that shape and avoids tying
+  up one worker thread per waiting request.
+- It matches FastAPI's grain and the selected DB driver (`asyncpg`), so the app
+  can stay on one concurrency model instead of mixing async route handlers with
+  sync DB/session code.
+- It is not strictly required for this app's expected traffic. A synchronous
+  SQLAlchemy stack would probably perform fine for a small study app, but async
+  is the cleaner architectural fit once FastAPI + `asyncpg` + async JWKS are in
+  the picture.
 - It is a constraint we wanted to *learn* on a low-stakes project before
   hitting it on something where the cost of getting it wrong is higher.
 
@@ -629,6 +768,32 @@ Static Web Apps creates more deployment friction than expected.
 
 ---
 
+## 20. DB-backed health check and configurable CORS
+
+**Decision question.** How to implement the health check and configurable CORS
+
+**Context.** These are two small logistical hurdles to overcome in order to
+deploy to Azure.
+
+**Options considered.**
+- **Option A.** We could just return a static health check, but I think that would defeat the point of any sort of actual health checks
+- **Option B.** Not really sure what
+
+**Questions for the maintainer.** What must the human decide or explain?
+
+**My current understanding.** I'm a bit fuzzy on CORS, but my sense is that it will block content from being displayed in the client's browser unless we configure allow lists. I'm guessing our SPA will need to reach out the backend, and this is driving the allow lists.
+
+**Decision.** Maintainer-owned.
+
+**Consequences.** Maintainer-owned.
+
+**Reversal trigger.** Maintainer-owned.
+
+**Learning debt.** Maintainer-owned.
+
+**Status.** Settled / Revisit-when / Open.
+---
+
 ## How to add to this document
 
 When a non-trivial decision gets made:
@@ -641,3 +806,4 @@ When a non-trivial decision gets made:
 3. If a decision in this doc later gets reversed, **do not delete the
    entry** — strike it through and add a "Superseded by #N" pointer. The
    reasoning that was wrong is as useful as the reasoning that was right.
+4. (6/4/26) Follow the format described in `docs/ai-collaboration.md`.

@@ -1,95 +1,128 @@
 # Handover: Azure deployment
 
 Paste this prompt into a fresh session to resume the Azure deployment thread.
-Last updated 2026-06-01.
+Last updated 2026-06-05.
 
 ---
 
 **Task: resume Azure deployment planning for the Pharmacy Study App.**
 
-**Where we are (session ending 2026-06-01).**
+**Important process context.**
 
-The app is feature-complete enough to deploy. Auth (Supabase JWKS) and migrations
-(consolidated to pure Alembic — decision #18) are done. The deployment target is
-**Azure** (user has dev credits). The high-level architecture for the deploy is:
+This project is being run as AI-assisted deliberate practice, not autonomous
+agent implementation. Before making non-trivial deployment changes:
 
-- **DB + Auth:** Supabase Cloud — stays. No move to Azure Postgres. Confirmed via
-  decision #3 and the dev-mode-bypass setup in decision #17.
-- **Backend:** Azure (Container Apps vs. App Service — *open*, recommendation was
-  Container Apps for scale-to-zero).
-- **Frontend:** Azure Static Web Apps vs. Vercel vs. Netlify — *being investigated
-  in a separate session*. A handover prompt for that decision was issued earlier
-  this session; the result should land as decision #19 in `docs/decisions.md`.
+1. Read `AGENTS.md`.
+2. Read `docs/ai-collaboration.md`.
+3. Do a decision inventory before implementation.
+4. Agents may prepare decision worksheets with options and questions, but the
+   human maintainer owns final decision text, current understanding, and
+   learning debt.
+5. Do not mix separate `docs/adr/*.md` files with `docs/decisions.md` unless
+   the maintainer first makes an explicit process decision to migrate decision
+   storage.
 
-**Hard blockers for a public Azure deploy (still open):**
+There was process churn in the previous session. `docs/decisions.md` may contain
+an incomplete `## 20. DB-backed health check and configurable CORS` stub near the
+bottom. If present, treat it as a placeholder for the maintainer, not an accepted
+agent-authored decision. Do not fill it in unless the maintainer explicitly asks
+for that. Prefer preparing a worksheet/options summary for the maintainer.
 
-1. **Task 13 in `docs/plan.md`** — configurable CORS + real `/health` that exercises
-   the DB. Required before going public (Container Apps health probes; CORS
-   hardcoded to `localhost:5173` will reject the deployed frontend).
-2. **No `Dockerfile` yet** — task 18 lists one but it hasn't been written.
-   Container Apps needs a container image.
-3. **`VITE_API_BASE_URL` wiring on the chosen frontend host** —
-   `frontend/src/api/client.ts:14` already reads it, just needs to be set per-host.
+**Where the app architecture stands.**
 
-**Nice-to-have, not blocking deploy itself:**
+The app is feature-complete enough to start deployment plumbing. Auth
+(Supabase JWKS) and migrations (pure Alembic, decision #18) are done. The target
+cloud is Azure because the maintainer has dev credits and wants Azure practice.
 
-- Task 17 — seeded demo dataset (otherwise the demo URL shows an empty app).
-- Task 19 — CI on PRs (green check, gates regressions).
-- **Error reporting** — no plan.md task yet. Sentry-style server-side capture.
-  Worth adding as a new task and possibly a decision (open vendor choice).
+- **DB + Auth:** Supabase Cloud stays. Do not move to Azure Postgres unless the
+  maintainer opens a new decision.
+- **Frontend:** Azure Static Web Apps is settled in decision #19.
+- **Backend:** Azure Container Apps vs. Azure App Service is still open.
+  Recommendation from prior work was Container Apps for container-native deploy
+  and scale-to-zero, but the maintainer should own the final decision.
+- **Deployment:** intended direction is GitHub Actions driving frontend and
+  backend deploys.
 
-**Open decisions to make before/during this work:**
+**Hard blockers for public Azure deploy.**
 
-1. **Frontend host** — separate session in progress; check `docs/decisions.md` for
-   a new #19 before starting.
-2. **Backend on Container Apps vs. App Service** — not yet decided. Recommendation:
-   Container Apps. Should land as the next decision after frontend host.
-3. **Error reporting vendor** — Sentry vs. Azure Application Insights vs. nothing.
-   Application Insights is the "stay in Azure" answer; Sentry is the "best DX"
-   answer. Open.
-4. **Schema visualization tool** — mentioned in decision #18 as a follow-up to
-   keep the SQL-as-docs property the old `.sql` files provided. Not on the
-   critical path.
+1. **Task 13 in `docs/plan.md`: configurable CORS + real `/health`.**
+   - Current `/health` is static and does not exercise the DB.
+   - CORS must allow the deployed Azure Static Web Apps origin.
+   - This is the first implementation slice.
+2. **No backend `Dockerfile` yet.**
+   - Container Apps needs a container image if Container Apps is chosen.
+3. **Frontend environment wiring.**
+   - `frontend/src/api/client.ts` already reads `VITE_API_BASE_URL`; the Azure
+     Static Web Apps build/deploy path must set it.
+   - Also set `VITE_SUPABASE_URL`, `VITE_PUBLISHABLE_KEY`,
+     `VITE_AUTH_MODE=supabase`, and `VITE_USE_MOCK=false` for the real demo.
 
-**Suggested order of operations when resuming:**
+**Nice-to-have before sharing the URL broadly.**
 
-1. Read `docs/decisions.md` start-to-finish — especially the most recent entries
-   (#15, #17, #18, and whatever #19 turned into).
-2. Read `docs/plan.md` Phase 4 (tasks 13, 14) and Phase 6 (tasks 18, 19, 20) —
-   that's the active deployment surface.
-3. Read `CLAUDE.md` for the codebase conventions and `README.md` for the
-   high-level shape.
-4. Knock out task 13 first (CORS + `/health`) — prerequisite for any public
-   deploy, and small.
-5. Write the Dockerfile (task 18 step 2).
-6. Pick backend host (Container Apps recommended) and document as a new decision.
-7. Pick error reporting vendor and add it as a new plan.md task.
-8. Wire the Azure resources: Supabase Cloud Postgres → Container Apps backend →
-   Static Web Apps (or whatever #19 lands on) frontend, with all the env vars
-   from decision #17 set per-environment.
-9. Run `alembic upgrade head` against Supabase Cloud Postgres (it's the canonical
-   apply path now — decision #18).
-10. Apply the demo seed (task 17) so the demo URL feels alive.
-11. Update README with the live demo URL and screenshots (task 20).
+- Task 17: seeded demo dataset. Otherwise the real deployed app may feel empty.
+- Task 19: CI on PRs.
+- Error reporting: open vendor choice. Application Insights is the Azure-native
+  option; Sentry is the stronger developer-experience option; doing nothing for
+  the first locked-down demo is also viable.
 
-**Important context the agent won't have:**
+**Open decisions / worksheets to prepare.**
 
-- Decision #17 sets up `AUTH_MODE=supabase|dev` (backend) and
-  `VITE_AUTH_MODE=supabase|dev` (frontend) with an `APP_ENV` guardrail.
-  Production deploys must run `AUTH_MODE=supabase` + `APP_ENV=production`; the
-  guardrail rejects `AUTH_MODE=dev` outside `local`. All four env vars per
-  environment need to be set in the host config.
-- The frontend can also deploy in pure mock mode (`VITE_USE_MOCK=true`, decision
-  #12) — useful if the backend isn't ready yet, keeps the GitHub demo link
-  unbroken.
-- Migration consolidation (decision #18) means `docs/db/migrations/` no longer
-  exists. The apply path everywhere is `alembic upgrade head`. Don't recreate
-  `.sql` files.
-- `frontend/src/api/client.ts:14` reads `VITE_API_BASE_URL` with a localhost
-  default — fine for the env-var-injection model on any static host.
+1. **Decision storage process.**
+   - Current canonical store is `docs/decisions.md`.
+   - If the maintainer wants per-decision ADR files, first create a process
+     decision defining the directory, template, numbering, and whether
+     `docs/decisions.md` is frozen, migrated, or becomes an index.
+2. **Backend host.**
+   - Container Apps vs. App Service.
+   - Prepare options and tradeoffs; do not author the final decision text.
+3. **Health/CORS implementation details.**
+   - Likely small enough to implement from task 13 after the maintainer accepts
+     the approach.
+   - Decision points: one `/health` endpoint vs. separate `/live`/`/ready`;
+     exact CORS parsing format; whether health should use `Depends(get_db)` or
+     direct session creation.
+4. **Lockdown strategy.**
+   - Supabase app auth only vs. Azure Static Web Apps password protection vs.
+     SWA auth routes vs. backend ingress restrictions.
+5. **Error reporting.**
+   - Application Insights vs. Sentry vs. defer.
 
-**Out of scope for this resume task:**
+**Suggested fresh-session order.**
 
-- The frontend host decision itself (separate session).
-- Anything pre-deployment in `docs/plan.md` (tasks 7, 8, 9, 14, 15 — those are
-  unrelated feature work).
+1. Run `git status --short` and inspect current uncommitted docs changes.
+2. Read `AGENTS.md`, `docs/ai-collaboration.md`, `docs/decisions.md`, and
+   `docs/plan.md`.
+3. Resolve the decision-storage confusion before adding new decision text.
+4. For task 13, prepare a decision worksheet/options summary for the maintainer:
+   DB-backed `/health`, configurable `CORS_ORIGINS`, tests, and `.env.example`
+   updates.
+5. After the maintainer accepts the task 13 approach, implement only that slice:
+   - `app/config.py`: add CORS origins setting.
+   - `app/main.py`: use configured CORS origins and make `/health` query DB.
+   - `.env.example`: document `CORS_ORIGINS`.
+   - tests: add focused coverage for health success/failure and CORS config if
+     practical.
+6. Run backend tests.
+7. Stop and do the learning checkout before moving to Dockerfile or Azure
+   workflow work.
+
+**Environment reminders.**
+
+- Production/staging backend must use `APP_ENV=production|staging` and
+  `AUTH_MODE=supabase`.
+- `AUTH_MODE=dev` is guarded so it should only work with `APP_ENV=local`.
+- `DATABASE_URL` must use `postgresql+asyncpg://`.
+- Supabase Cloud remains the canonical production database and auth provider.
+- The frontend can deploy in mock mode with `VITE_USE_MOCK=true` as a fallback,
+  but the real demo path should use `VITE_USE_MOCK=false`.
+- Alembic is the only migration path: run `alembic upgrade head`; do not
+  recreate deleted SQL migration files.
+
+**Out of scope for the first fresh-session slice.**
+
+- Dockerfile.
+- GitHub Actions deployment workflows.
+- Azure resource creation.
+- Demo seed data.
+- README screenshots.
+- Search endpoint, session-close endpoint, FSRS weights, and ingestion pipeline.
