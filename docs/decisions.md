@@ -768,30 +768,145 @@ Static Web Apps creates more deployment friction than expected.
 
 ---
 
-## 20. DB-backed health check and configurable CORS
+## 20. Deployment readiness: health check and CORS
 
-**Decision question.** How to implement the health check and configurable CORS
+This entry covers two small deployment-readiness choices. They can ship in one
+PR because they both unblock cloud deployment, but they answer different
+questions:
 
-**Context.** These are two small logistical hurdles to overcome in order to
-deploy to Azure.
+- **Health check:** how does the backend report whether it is usable?
+- **CORS:** which browser origins may read responses from the backend API?
+
+### 20a. Health endpoint
+
+**Decision question.** What should `/health` prove?
+
+**Context.** A custom `/health` endpoint may not be strictly required for the
+backend to start on Azure, but it gives the host and maintainer a simple
+readiness signal. For this app, a static process check is weak because the API
+depends on Supabase Postgres. If the database is unreachable, the FastAPI
+process may still be running, but the application is not useful.
 
 **Options considered.**
-- **Option A.** We could just return a static health check, but I think that would defeat the point of any sort of actual health checks
-- **Option B.** Not really sure what
+- **Static process health.** Return 200 if the FastAPI process can serve the
+  route. This is simple and avoids touching the database, but it does not catch
+  database connectivity failures.
+- **DB-backed readiness check.** Run a trivial query such as `SELECT 1` against
+  the configured database and return 503 if it fails. This is a better signal
+  for a database-backed API, but it means health probes can add small database
+  load and DB outages will make `/health` fail.
+- **Separate `/live` and `/ready`.** `/live` proves the process is running;
+  `/ready` proves dependencies are reachable. This is operationally precise,
+  but more surface area than this app needs for the first deploy.
 
-**Questions for the maintainer.** What must the human decide or explain?
+**Recommended option.** Use one unauthenticated DB-backed `/health` endpoint for
+now. Return minimal information, such as `{ "status": "ok", "db": "ok" }`, and
+return 503 without leaking connection strings, exception details, table names,
+or Supabase internals when the DB check fails. Revisit separate `/live` and
+`/ready` endpoints if Azure health probes, uptime monitoring, or debugging needs
+start pulling those concerns apart.
 
-**My current understanding.** I'm a bit fuzzy on CORS, but my sense is that it will block content from being displayed in the client's browser unless we configure allow lists. I'm guessing our SPA will need to reach out the backend, and this is driving the allow lists.
+**Questions for the maintainer.**
+- Can I explain the difference between "the process is running" and "the app is
+  ready to serve useful traffic"?
+- Am I comfortable with `/health` failing when Supabase Postgres is unavailable?
+- What information is safe to return from a public health endpoint?
+- What would make us split `/health` into `/live` and `/ready` later?
 
-**Decision.** Maintainer-owned.
+**My current understanding.** Health is a useful metric, and necessary for a lot
+of the infrastructure that supports cloud deployments. It needs to exercise
+minimal logic, and can be separated into liveness and readiness. If you ping the
+DB, you need to think about things like the timeout period (you might favor short
+timeouts so that a slow DB response doesn't trigger container restarts). Adding
+authentication sounds appealing, but it might make it difficult for some
+infrastructure to ping your containerized app. In a cloud-based environment, you
+might see a container as functioning, but the app might be thrashing due to
+memory issues, deadlocks, or infinite loops.
 
-**Consequences.** Maintainer-owned.
+**Decision.** Combine liveness and readiness into a single `/health` check.
+Exercise minimal `SELECT 1` query just to test the DB connectivity roundtrip. No
+authentication at this time.
 
-**Reversal trigger.** Maintainer-owned.
+**Consequences.** Cannot distinguish between liveness and readiness. DB
+connectivity could cause the `/health` check to fail.
 
-**Learning debt.** Maintainer-owned.
+**Reversal trigger.** Consider reconfiguration if we see things like DB timeouts
+leading to issues with the health checks.
 
-**Status.** Settled / Revisit-when / Open.
+**Learning debt.** Unknown
+
+**Status.** Decided
+
+### 20b. Configurable CORS origins
+
+**Decision question.** How should the backend decide which frontend origins are
+allowed to call it from browser JavaScript?
+
+**Context.** The frontend and backend will be served from different origins:
+Azure Static Web Apps for the Vite/React bundle, and a separate Azure-hosted
+FastAPI service for the API. Browsers enforce CORS before frontend JavaScript
+can read cross-origin API responses. CORS is not backend authorization; the API
+still depends on Supabase JWT validation for real access control.
+
+Currently `app/main.py` hard-codes `allow_origins=["http://localhost:5173"]`,
+which matches the local Vite dev server but will block the deployed frontend.
+
+**Options considered.**
+- **Hard-code each origin in code.** Simple for one local origin, but every
+  staging, production, or preview URL change requires a code change and
+  redeploy.
+- **Allow all origins.** Easy during development, but too loose for an
+  authenticated API and a bad production habit. It can also conflict with
+  credentialed requests depending on middleware settings.
+- **Environment-configured allow list.** Read explicit allowed origins from
+  configuration, defaulting to the local Vite origin. This supports local,
+  staging, and production without changing code.
+- **Pattern-based origins.** Allow origins by regex or wildcard, such as a
+  family of Azure Static Web Apps preview URLs. This can reduce config churn for
+  preview environments, but it is easier to make too broad.
+
+**Recommended option.** Use an explicit comma-separated `CORS_ORIGINS`
+environment variable, defaulting to `http://localhost:5173`. Add the Azure
+Static Web Apps origin when it exists. Revisit regex or wildcard support only if
+Azure preview environments become a real workflow requirement.
+
+**Questions for the maintainer.**
+- Can I explain why CORS is browser-enforced and not a substitute for JWT auth?
+- Which exact origins should be allowed for local development, staging, and
+  production?
+- Do we need pull-request preview frontend URLs to call a deployed backend, or
+  can preview builds stay in mock mode for now?
+- What would make a pattern-based allow list worth the added risk?
+
+**My current understanding.** Misconfigured allow-origins will prevent the
+user's browser from being able to exercise JavaScript that comes from a
+different source. Because our backend will be a different origin, it needs to be
+configured properly. I like the idea of being able to do both cloud and local
+development for now, so a configurable option would be good. Regex feels like
+overkill. CORS is configured on the backend, and allows only certain origins to
+read responses from browser-based requests. Some simple requests may still be
+sent without a preflight request, but the browser controls whether frontend
+JavaScript can read the response. You can configure additional options which
+will be returned in a preflight request that can put more granular restrictions
+on what the client's browser will allow.
+
+**Decision.** We'll use an environment variable-stored CSV for allowed origins.
+Locally, those will be for the correct localhost port. In the cloud, those will
+be configured for our frontend service.
+
+**Consequences.** Need to maintain env variables in both local and cloud
+settings. Any changes to allowed origins will need to be updated in the correct
+places.
+
+**Reversal trigger.** If we struggle to maintain environment variables properly in the cloud and local settings.
+
+**Learning debt.** CORS always feels fuzzy. The additional headers that you
+configure with CORS are beyond my understanding. It's also important to know
+that this won't lock down your API; it just means that potentially malicious
+sites cannot read API responses through a user's browser unless the backend
+allows that origin.
+
+**Status.** Decided.
 ---
 
 ## How to add to this document

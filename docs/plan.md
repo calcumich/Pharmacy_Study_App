@@ -306,7 +306,13 @@ notice. Loading-state leak in `handleSubmit` fixed in a follow-up commit.
 
 ---
 
-### [ ] 13. Real `/health` + configurable CORS
+### [x] 13. Real `/health` + configurable CORS
+
+**Done:** `/health` now runs `SELECT 1` through the existing async DB dependency
+and returns a sanitized 503 when the DB probe fails. CORS origins now come from
+the `CORS_ORIGINS` CSV setting, defaulting to the local Vite origin.
+`.env.example` documents the setting. Focused tests cover health success,
+sanitized failure, CORS parsing, and the default local preflight behavior.
 
 **Goal:** `/health` should `SELECT 1` so orchestrators detect DB outages.
 `CORSMiddleware` should read allowed origins from settings instead of hardcoding
