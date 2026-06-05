@@ -11,7 +11,7 @@ from jose import JWTError, jwt
 
 from app.config import settings
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 _JWKS_CACHE_TTL_SECONDS = 600
 _JWKS_FETCH_TIMEOUT_SECONDS = 5.0
 
@@ -91,7 +91,16 @@ async def _decode_supabase_token(token: str) -> dict:
         )
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> uuid.UUID:
+async def get_current_user(token: str | None = Depends(oauth2_scheme)) -> uuid.UUID:
+    if settings.AUTH_MODE == "dev":
+        try:
+            return uuid.UUID(settings.DEV_USER_ID)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Invalid dev user")
+
+    if token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
     try:
         payload = await _decode_supabase_token(token)
         sub: str | None = payload.get("sub")

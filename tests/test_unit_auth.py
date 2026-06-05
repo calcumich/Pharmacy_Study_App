@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import httpx
 import pytest
+from pydantic import ValidationError
 from jose import JWTError
 
+from app.config import Settings
 from app.dependencies import auth
 
 
@@ -97,6 +99,8 @@ async def test_decode_supabase_token_refreshes_jwks_after_jwt_error(monkeypatch:
 
 @pytest.mark.asyncio
 async def test_get_current_user_returns_uuid_from_valid_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(auth.settings, "AUTH_MODE", "supabase")
+
     async def fake_decode(_token: str) -> dict:
         return {"sub": "00000000-dead-beef-0000-000000000001"}
 
@@ -109,6 +113,8 @@ async def test_get_current_user_returns_uuid_from_valid_token(monkeypatch: pytes
 
 @pytest.mark.asyncio
 async def test_get_current_user_rejects_invalid_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(auth.settings, "AUTH_MODE", "supabase")
+
     async def fake_decode(_token: str) -> dict:
         raise httpx.ConnectError("boom")
 
@@ -118,3 +124,23 @@ async def test_get_current_user_rejects_invalid_token(monkeypatch: pytest.Monkey
         await auth.get_current_user("token-value")
 
     assert getattr(exc_info.value, "status_code", None) == 401
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_returns_dev_user_without_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(auth.settings, "AUTH_MODE", "dev")
+    monkeypatch.setattr(auth.settings, "DEV_USER_ID", "11111111-1111-4111-8111-111111111111")
+
+    user_id = await auth.get_current_user(None)
+
+    assert str(user_id) == "11111111-1111-4111-8111-111111111111"
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_settings_reject_dev_auth_outside_local(app_env: str) -> None:
+    with pytest.raises(ValidationError):
+        Settings(
+            APP_ENV=app_env,
+            AUTH_MODE="dev",
+            DATABASE_URL="postgresql+asyncpg://app:secret@localhost:5433/pharmdb",
+        )

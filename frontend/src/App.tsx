@@ -23,6 +23,7 @@ import type {
 
 type Step = 'browse' | 'drugs' | 'configure' | 'study';
 type StudyMode = 'flashcard' | 'table';
+const AUTH_MODE = import.meta.env.VITE_AUTH_MODE ?? 'supabase';
 
 // ── FlashcardView card shape ──────────────────────────────────────────────────
 
@@ -98,7 +99,11 @@ export default function App() {
   // ── Auth bootstrap ────────────────────────────────────────────────────────
   useEffect(() => {
     const useMock = import.meta.env.VITE_USE_MOCK === 'true';
-    if (useMock) { setAuthLoading(false); return; }
+    if (useMock || AUTH_MODE === 'dev') {
+      setAuthToken(null);
+      setAuthLoading(false);
+      return;
+    }
 
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -247,7 +252,7 @@ export default function App() {
     );
   }
 
-  if (!session && import.meta.env.VITE_USE_MOCK !== 'true') {
+  if (!session && import.meta.env.VITE_USE_MOCK !== 'true' && AUTH_MODE !== 'dev') {
     return <AuthForm />;
   }
 
@@ -269,6 +274,11 @@ export default function App() {
           {import.meta.env.VITE_USE_MOCK === 'true' && (
             <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-900/50 border border-yellow-700 text-yellow-400 font-mono">
               mock data
+            </span>
+          )}
+          {AUTH_MODE === 'dev' && (
+            <span className="text-xs px-2.5 py-1 rounded-full bg-blue-950/60 border border-blue-800 text-blue-300 font-mono">
+              dev auth
             </span>
           )}
           {session && (

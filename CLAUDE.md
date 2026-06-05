@@ -63,11 +63,8 @@ npm run build      # type-check + production build
 CLAUDE.md                      ← you are here
 docs/
   schema.md                    ← full design rationale; read before touching schema
-  db/
-    migrations/
-      001_core_schema.sql      ← drugs, classes, attributes, interactions
-      002_user_study.sql       ← srs_state, study_sessions, flashcard_state
-      003_seed_attribute_types.sql
+  decisions.md                 ← architectural decisions, alternatives considered, why
+  plan.md                      ← active roadmap (task tracking)
 app/
   main.py                      ← FastAPI entry point; registers routers + CORS
   config.py                    ← Settings (pydantic-settings, reads DATABASE_URL from env)
@@ -171,17 +168,26 @@ Full rationale in `docs/schema.md`. Short version for quick reference:
 
 ## Alembic
 
+Alembic is the single source of truth for schema (decision #18). All schema changes go in
+`alembic/versions/` and are applied with `alembic upgrade head` — local, CI, staging, prod.
+Do not create parallel `.sql` migration files.
+
 - `alembic.ini` has `sqlalchemy.url = placeholder`; `alembic/env.py` overrides this with
   `os.getenv("DATABASE_URL")` at runtime.
 - Alembic uses an **async** engine (`async_engine_from_config` + `asyncpg`).
 - `DATABASE_URL` must use the `postgresql+asyncpg://` scheme for both the app and Alembic.
-- To apply SQL migrations manually and then stamp Alembic: run the `.sql` files via psql, then
-  `alembic stamp head` so Alembic knows the schema is already in place.
+- New migrations are hand-written with `op.execute("""…""")` blocks for triggers, custom
+  enums, `tsvector` columns, and `CHECK` constraints. See
+  `alembic/versions/8d50f2cb30e1_initial_schema.py` as the reference shape.
 - To verify models match the DB: `alembic revision --autogenerate -m "check"` should produce
-  empty `upgrade()`/`downgrade()` bodies.
+  empty `upgrade()`/`downgrade()` bodies. This is a drift detector, not the authoring path.
 
 ## Conventions
 
+- Follow the AI collaboration rules in `AGENTS.md`. For non-trivial work, use
+  the deliberate-practice loop in `docs/ai-collaboration.md`: inventory
+  decisions, plan, implement in small diffs, review against the plan, and close
+  with a learning checkout.
 - Use **async SQLAlchemy** throughout — no sync sessions
 - All schema changes via **Alembic migrations** — no manual DDL, no `CREATE TABLE` in application code
 - Database connection from environment variable: `DATABASE_URL`
@@ -212,5 +218,7 @@ Update task status (`[ ]` → `[~]` → `[x]`) as you work.
 ## Updating this file
 
 At the end of any session where significant architectural decisions are made, update
-`CLAUDE.md` and `docs/schema.md` before closing out. A stale `CLAUDE.md` is worse
-than none.
+`CLAUDE.md`, `docs/schema.md`, and `docs/decisions.md` before closing out. A stale
+`CLAUDE.md` is worse than none. New decisions go in `docs/decisions.md` with
+Decision / Alternatives / Why / Status fields — see the bottom of that file for the
+template.

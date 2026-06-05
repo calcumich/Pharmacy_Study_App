@@ -3,7 +3,8 @@ Models for the core drug domain: drug_classes, attribute_types, drugs, and
 the list-shape attribute tables (drug_indications, drug_adrs, drug_metabolism).
 
 All Postgres enums are mapped with create_type=False — the types are created by
-001_core_schema.sql and must already exist in the DB.
+the initial Alembic revision (alembic/versions/8d50f2cb30e1_initial_schema.py)
+and must already exist in the DB.
 """
 import enum
 import uuid
