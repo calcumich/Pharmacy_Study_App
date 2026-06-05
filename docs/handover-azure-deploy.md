@@ -22,11 +22,9 @@ agent implementation. Before making non-trivial deployment changes:
    the maintainer first makes an explicit process decision to migrate decision
    storage.
 
-There was process churn in the previous session. `docs/decisions.md` may contain
-an incomplete `## 20. DB-backed health check and configurable CORS` stub near the
-bottom. If present, treat it as a placeholder for the maintainer, not an accepted
-agent-authored decision. Do not fill it in unless the maintainer explicitly asks
-for that. Prefer preparing a worksheet/options summary for the maintainer.
+Decision storage is still `docs/decisions.md`. Do not create separate ADR files
+unless the maintainer first makes an explicit process decision to migrate
+decision storage.
 
 **Where the app architecture stands.**
 
@@ -37,21 +35,21 @@ cloud is Azure because the maintainer has dev credits and wants Azure practice.
 - **DB + Auth:** Supabase Cloud stays. Do not move to Azure Postgres unless the
   maintainer opens a new decision.
 - **Frontend:** Azure Static Web Apps is settled in decision #19.
-- **Backend:** Azure Container Apps vs. Azure App Service is still open.
-  Recommendation from prior work was Container Apps for container-native deploy
-  and scale-to-zero, but the maintainer should own the final decision.
+- **Backend:** Azure App Service is the initial backend hosting direction. The
+  maintainer wants to get the live demo deployed first, then revisit Azure
+  Container Apps/containerization later if the added complexity is useful.
+  `docs/decisions.md` #21 records the decision.
 - **Deployment:** intended direction is GitHub Actions driving frontend and
   backend deploys.
 
 **Hard blockers for public Azure deploy.**
 
-1. **Task 13 in `docs/plan.md`: configurable CORS + real `/health`.**
-   - Current `/health` is static and does not exercise the DB.
-   - CORS must allow the deployed Azure Static Web Apps origin.
-   - This is the first implementation slice.
-2. **No backend `Dockerfile` yet.**
-   - Container Apps needs a container image if Container Apps is chosen.
-3. **Frontend environment wiring.**
+1. **App Service deploy runbook needs review.**
+   - `docs/deploy.md` now documents the App Service startup command, required
+     app settings, and manual verification steps.
+   - Review and refine the runbook before creating Azure resources or adding
+     GitHub Actions automation.
+2. **Frontend environment wiring.**
    - `frontend/src/api/client.ts` already reads `VITE_API_BASE_URL`; the Azure
      Static Web Apps build/deploy path must set it.
    - Also set `VITE_SUPABASE_URL`, `VITE_PUBLISHABLE_KEY`,
@@ -72,15 +70,11 @@ cloud is Azure because the maintainer has dev credits and wants Azure practice.
    - If the maintainer wants per-decision ADR files, first create a process
      decision defining the directory, template, numbering, and whether
      `docs/decisions.md` is frozen, migrated, or becomes an index.
-2. **Backend host.**
-   - Container Apps vs. App Service.
-   - Prepare options and tradeoffs; do not author the final decision text.
-3. **Health/CORS implementation details.**
-   - Likely small enough to implement from task 13 after the maintainer accepts
-     the approach.
-   - Decision points: one `/health` endpoint vs. separate `/live`/`/ready`;
-     exact CORS parsing format; whether health should use `Depends(get_db)` or
-     direct session creation.
+2. **Frontend/backend access strategy.**
+   - CORS is implemented with `CORS_ORIGINS`, but the deployed Azure Static Web
+     Apps origin still needs to be added to backend app settings.
+   - Decide whether pull-request preview frontend URLs should call the deployed
+     backend or remain in mock mode.
 4. **Lockdown strategy.**
    - Supabase app auth only vs. Azure Static Web Apps password protection vs.
      SWA auth routes vs. backend ingress restrictions.
@@ -92,19 +86,18 @@ cloud is Azure because the maintainer has dev credits and wants Azure practice.
 1. Run `git status --short` and inspect current uncommitted docs changes.
 2. Read `AGENTS.md`, `docs/ai-collaboration.md`, `docs/decisions.md`, and
    `docs/plan.md`.
-3. Resolve the decision-storage confusion before adding new decision text.
-4. For task 13, prepare a decision worksheet/options summary for the maintainer:
-   DB-backed `/health`, configurable `CORS_ORIGINS`, tests, and `.env.example`
-   updates.
-5. After the maintainer accepts the task 13 approach, implement only that slice:
-   - `app/config.py`: add CORS origins setting.
-   - `app/main.py`: use configured CORS origins and make `/health` query DB.
-   - `.env.example`: document `CORS_ORIGINS`.
-   - tests: add focused coverage for health success/failure and CORS config if
-     practical.
-6. Run backend tests.
-7. Stop and do the learning checkout before moving to Dockerfile or Azure
-   workflow work.
+3. Review `docs/deploy.md` and prepare a small App Service deployment plan:
+   - App Service resource shape and pricing tier to use for the demo.
+   - Python runtime and startup command for `app.main:app`.
+   - Required backend app settings:
+     `APP_ENV=production`, `AUTH_MODE=supabase`, `DATABASE_URL`,
+     `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, and `CORS_ORIGINS`.
+   - Manual verification path: `/health`, authenticated API call, and frontend
+     CORS check from Azure Static Web Apps.
+4. Implement only the accepted deployment-docs slice first, then consider
+   GitHub Actions automation.
+5. Stop and do the learning checkout before moving to Dockerfile,
+   Container Apps, or extra Azure services.
 
 **Environment reminders.**
 
@@ -120,7 +113,7 @@ cloud is Azure because the maintainer has dev credits and wants Azure practice.
 
 **Out of scope for the first fresh-session slice.**
 
-- Dockerfile.
+- Dockerfile / container registry / Container Apps.
 - GitHub Actions deployment workflows.
 - Azure resource creation.
 - Demo seed data.
