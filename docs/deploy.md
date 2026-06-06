@@ -119,6 +119,75 @@ Supabase:
 - JWT verification mode: JWKS via `SUPABASE_URL`
 - Demo user/account plan:
 
+## Supabase Database Preparation
+
+Supabase Auth and Supabase Postgres are separate pieces of this deployment.
+Having Supabase Auth configured does not mean the app database schema exists.
+Before the Azure backend can serve real API routes, Alembic migrations must be
+applied to Supabase Postgres.
+
+Use the Supabase dashboard connection string as the starting point for
+`DATABASE_URL`:
+
+1. In Supabase, open the project.
+2. Click **Connect**.
+3. Copy the **Session pooler** or **Transaction pooler** URI.
+4. Replace the password placeholder with the database password.
+5. Change only the URI scheme from `postgres://` or `postgresql://` to
+   `postgresql+asyncpg://`.
+
+Example transformation:
+
+```text
+postgres://postgres.<project-ref>:[YOUR-PASSWORD]@...pooler.supabase.com:5432/postgres
+```
+
+becomes:
+
+```text
+postgresql+asyncpg://postgres.<project-ref>:<database-password>@...pooler.supabase.com:5432/postgres
+```
+
+Keep the host, port, username, project ref, and database path exactly as
+Supabase provides them. The `+asyncpg` part is for SQLAlchemy's async driver;
+Supabase will not show that form in the dashboard.
+
+`DATABASE_URL` is a secret because it includes the database password. Do not
+commit the real value to docs, source code, or GitHub Actions workflow files.
+
+To apply migrations from a local shell, set the backend environment to use the
+Supabase Cloud database:
+
+```text
+APP_ENV=local
+AUTH_MODE=supabase
+DATABASE_URL=<supabase-postgres-asyncpg-url>
+SUPABASE_URL=<supabase-project-url>
+SUPABASE_JWT_SECRET=
+CORS_ORIGINS=http://localhost:5173
+```
+
+Then run:
+
+```bash
+alembic upgrade head
+```
+
+After the command succeeds, verify Supabase contains the app schema:
+
+- `alembic_version`
+- `drug_classes`
+- `drugs`
+- `attribute_types`
+- `study_sessions`
+- `review_events`
+- `srs_state`
+- `flashcard_state`
+
+`/health` only proves the backend can run `SELECT 1`; it does not prove the app
+tables exist. Check the migrated tables before treating the cloud database as
+deployment-ready.
+
 Resource guardrails:
 
 - Do not create Azure Postgres.
