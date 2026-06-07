@@ -1014,6 +1014,82 @@ configuration, or GitHub Actions workflow files.
 **Status.** Decided: App Service first, with Container Apps as a later revisit.
 
 ---
+## 22. Python dependency tool
+
+**Decision question.** Should the backend Python workflow stay on pip with a
+`requirements.txt` compatibility file, or should the project standardize on uv
+with a committed `uv.lock`?
+
+**Context.** The backend already uses setuptools/PEP 621 metadata in
+`pyproject.toml`. Azure App Service/Oryx failed during deployment because it
+saw a bare `pyproject.toml`, assumed Poetry, and looked for a `[tool.poetry]`
+section. The project needs a dependency workflow that works locally, in GitHub
+Actions, and during App Service deployment without changing the app runtime,
+database, auth, or hosting decisions.
+
+**Options considered.**
+- **pip plus `requirements.txt`.** Add a runtime dependency list for Azure/Oryx
+  while keeping `pyproject.toml` as project metadata. This is familiar and
+  likely to work with App Service, but it duplicates dependency declarations
+  and creates an ongoing sync responsibility.
+- **pip plus setuptools `pyproject.toml` only.** Keep one dependency source and
+  avoid new tooling. This does not currently solve the App Service/Oryx failure
+  because Oryx treats the bare `pyproject.toml` path as Poetry.
+- **uv plus committed `uv.lock`.** Keep dependencies declared in
+  `pyproject.toml`, commit a lockfile for reproducible installs, use uv locally
+  and in GitHub Actions, and let Oryx detect `pyproject.toml` plus `uv.lock`.
+  This avoids `requirements.txt` duplication, but introduces uv as new project
+  tooling and makes `uv.lock` a file the maintainer must understand.
+- **Poetry.** Change the project to the packaging tool Oryx initially assumed.
+  This would likely satisfy App Service, but it is unnecessary tool churn for a
+  project that already has valid PEP 621 metadata.
+
+**Questions for the maintainer.**
+- Do I want uv to become the standard backend dependency workflow, or only an
+  Azure deployment compatibility fix?
+- Am I comfortable committing and maintaining `uv.lock`?
+- Can I explain how `pyproject.toml` and `uv.lock` relate to each other?
+- If App Service still fails with uv, would I rather add `requirements.txt` or
+  move toward a prebuilt artifact deployment path?
+
+**My current understanding.** When we deploy an app to Azure, it uses an
+automated build process to rebuild the solution based on the code. It has a few
+different package managers it could use, including pip, Poetry, and uv. Pip is
+the package manager that I have used for a while, so that was most familiar.
+Worth mentioning that we decided to use `pyproject.toml` instead of
+`requirements.txt` for this project. `pyproject.toml` seems to function like
+`requirements.txt` but with some additional contextual data (for example,
+optional dev dependencies). `pyproject.toml` works with pip with a simple
+command: `pip install -e .`. However, that setup is not the path Azure Web Apps
+is choosing during its Oryx build. So we had a few options: add a
+`requirements.txt` and continue using pip while duplicating `pyproject.toml`,
+switch to uv, or switch to Poetry. I only vaguely know of Poetry, but I have
+heard that uv is an up-and-coming tool that's faster than pip. It seems
+beneficial to move to uv if possible. uv does provide a locking mechanism,
+which seems similar to `package-lock.json` in the npm environment.
+
+**Decision.** Keep `pyproject.toml`, but move to uv as our package manager. Add
+a `uv.lock` file so that Azure runs with uv.
+
+**Consequences.** Easiest to develop using uv. Need to update the workflow to
+keep `uv.lock` up to date.
+
+**Reversal trigger.** If Azure Web Apps still does not run properly with uv,
+and it seems like fixing it will require more changes than this is worth.
+
+**Learning debt.** Could learn more about Poetry; I kind of discounted it. I
+don't know what Oryx is (Azure's build system tool? Tool not specific to
+Azure?) but that was driving what build dependency system was being pulled in.
+I'm kind of assuming "uv is new and fast, uv must be better", but I couldn't
+give a detailed breakdown of the real practical benefits of uv compared to pip.
+I also don't know the workflow that will keep uv up to date. My understanding
+is that uv also serves as an environment controller, but I'm not certain on
+this.
+
+**Status.** Settled.
+
+
+---
 
 ## How to add to this document
 
@@ -1028,3 +1104,36 @@ When a non-trivial decision gets made:
    entry** — strike it through and add a "Superseded by #N" pointer. The
    reasoning that was wrong is as useful as the reasoning that was right.
 4. (6/4/26) Follow the format described in `docs/ai-collaboration.md`.
+
+## Decision entry template
+
+Copy this template when adding a new decision to this file. Keep the section
+number in sequence and delete sections that genuinely do not apply. Older
+entries may not use this format.
+
+```md
+## Decision Worksheet: Title
+
+**Decision question.** What needs to be decided?
+
+**Context.** Why does this matter now?
+
+**Options considered.**
+- **Option A.** What it means technically; tradeoffs.
+- **Option B.** What it means technically; tradeoffs.
+
+**Questions for the maintainer.** What must the human decide or explain?
+
+**My current understanding.** Maintainer-owned.
+
+**Decision.** Maintainer-owned.
+
+**Consequences.** Maintainer-owned.
+
+**Reversal trigger.** Maintainer-owned.
+
+**Learning debt.** Maintainer-owned.
+
+**Status.** Settled / Revisit-when / Open.
+
+```

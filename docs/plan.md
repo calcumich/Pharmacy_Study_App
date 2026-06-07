@@ -516,6 +516,14 @@ the quick-start changes.
 **Goal:** A working URL a visitor can click. The single highest-leverage
 portfolio improvement after the README.
 
+**Status note 2026-06-06:** Backend Azure App Service exists, App Service app
+settings are configured, startup command is set, and Supabase Postgres
+migrations have been applied successfully. Azure Deployment Center generated a
+GitHub Actions workflow for backend deploys. The current deploy fix is to use
+uv and commit `uv.lock` so Azure/Oryx does not assume Poetry for the repo's
+setuptools/PEP 621 `pyproject.toml`. See
+`docs/handovers/app-service-deploy-troubleshooting.md`.
+
 **Context:**
 - Frontend hosting is decided in `docs/decisions.md` #19: Azure Static Web
   Apps for the React/Vite static bundle, with Vercel as the fallback if SWA
@@ -559,7 +567,7 @@ maintained and the test suite isn't aspirational.
 
 **Steps:**
 1. Add `.github/workflows/ci.yml` running on push + PR:
-   - Backend job: `pip install -e ".[dev]"` then `pytest`.
+   - Backend job: `uv sync --locked --extra dev` then `uv run pytest`.
    - Frontend job: `npm ci` then `npm run build` (type-check + bundle).
 2. Add a passing-build badge to the top of `README.md`.
 

@@ -10,7 +10,7 @@ it with GitHub Actions after the steps are understood.
 - Backend: Azure App Service running the FastAPI app.
 - Database: Supabase Cloud Postgres.
 - Auth: Supabase Auth, verified by the backend via JWKS.
-- Migrations: Alembic only, applied with `alembic upgrade head`.
+- Migrations: Alembic only, applied with `uv run alembic upgrade head`.
 
 Azure App Service is the initial backend host per decision #21. Do not add a
 Dockerfile, container registry, Azure Container Apps resource, Azure Postgres,
@@ -27,7 +27,7 @@ Portable app contract:
 - Backend ASGI app: `app.main:app`.
 - Backend configuration: environment variables.
 - Backend database URL: standard `postgresql+asyncpg://...` SQLAlchemy URL.
-- Backend migration command: `alembic upgrade head`.
+- Backend migration command: `uv run alembic upgrade head`.
 - Backend health endpoint: `GET /health`.
 - Frontend backend URL: `VITE_API_BASE_URL` at build time.
 
@@ -170,7 +170,7 @@ CORS_ORIGINS=http://localhost:5173
 Then run:
 
 ```bash
-alembic upgrade head
+uv run alembic upgrade head
 ```
 
 After the command succeeds, verify Supabase contains the app schema:
@@ -247,10 +247,11 @@ a later decision accepts that risk.
 Manual-first backend deploy:
 
 1. Deploy the backend source to App Service.
-2. Confirm App Service installs the Python dependencies from `pyproject.toml`.
+2. Confirm App Service installs the Python dependencies from
+   `pyproject.toml` and `uv.lock`.
 3. Confirm the startup command is configured.
 4. Confirm all backend app settings are present.
-5. Run `alembic upgrade head` against the Supabase production database.
+5. Run `uv run alembic upgrade head` against the Supabase production database.
 6. Open the backend URL and check `GET /health`.
 
 Do not run migrations blindly against production. Confirm `DATABASE_URL` points
@@ -270,6 +271,50 @@ Expected response when Supabase Postgres is reachable:
 
 If `/health` returns 503, check the App Service logs, `DATABASE_URL`, Supabase
 network/access settings, and whether migrations have been applied.
+
+## Current Backend Deploy Status
+
+As of the first App Service deploy attempt:
+
+- Azure App Service exists for the backend.
+- App Service app settings have been configured with the Supabase-backed
+  production values.
+- App Service startup command has been set in the portal's stack settings:
+  `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+- Supabase Postgres migrations have been applied successfully from the local
+  machine with `uv run alembic upgrade head`.
+- Supabase Table Editor confirms the app tables now exist.
+- Azure generated a GitHub Actions workflow for backend deploys on `main`.
+- The workflow uses Azure OIDC / managed identity authentication, not a publish
+  profile secret.
+
+The first generated workflow failed because it expected `requirements.txt`.
+That was corrected temporarily by changing the workflow's local validation step
+to install the project from `pyproject.toml`:
+
+```bash
+pip install -e .
+```
+
+The next deploy attempt passed the GitHub-side install step but failed during
+Azure's Oryx build on App Service:
+
+```text
+[tool.poetry] section not found in /tmp/.../pyproject.toml
+Deployment Failed. Package deployment using ZIP Deploy failed.
+```
+
+The accepted fix is to standardize the backend dependency workflow on uv:
+
+- `pyproject.toml` remains the human-edited dependency metadata source.
+- `uv.lock` is committed for reproducible installs.
+- App Service/Oryx detects `pyproject.toml` plus `uv.lock` and uses uv instead
+  of assuming Poetry.
+- The GitHub Actions deploy workflow validates dependencies with
+  `uv sync --locked` and excludes `.venv/` from the deployment artifact.
+
+Do not add `requirements.txt` for App Service unless this uv path proves
+unworkable and a later decision accepts the duplicate dependency list.
 
 ## Frontend Static Web Apps Setup
 
