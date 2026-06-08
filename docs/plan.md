@@ -516,18 +516,30 @@ the quick-start changes.
 **Goal:** A working URL a visitor can click. The single highest-leverage
 portfolio improvement after the README.
 
+**Status note 2026-06-06:** Backend Azure App Service exists, App Service app
+settings are configured, startup command is set, and Supabase Postgres
+migrations have been applied successfully. Azure Deployment Center generated a
+GitHub Actions workflow for backend deploys. The current deploy fix is to use
+uv and commit `uv.lock` so Azure/Oryx does not assume Poetry for the repo's
+setuptools/PEP 621 `pyproject.toml`. See
+`docs/handovers/app-service-deploy-troubleshooting.md`.
+
 **Context:**
 - Frontend hosting is decided in `docs/decisions.md` #19: Azure Static Web
   Apps for the React/Vite static bundle, with Vercel as the fallback if SWA
   creates more deployment friction than expected.
-- Backend hosting still follows the #15 direction: likely Azure Container Apps.
+- Backend hosting is being documented in `docs/decisions.md` #21: Azure App
+  Service for the initial backend deploy, with Azure Container Apps reserved as
+  a later revisit path if containerization, scale-to-zero, or deployment
+  reproducibility becomes worth the added complexity.
 - The DB can stay on Supabase regardless of where the backend runs — that
   keeps auth simple (the JWKS dependency is already production-shaped).
 
 **Steps:**
 1. Create the Azure Static Web Apps frontend resource and GitHub Actions deploy.
-2. Containerize the backend: add a `Dockerfile` that runs `uvicorn` against
-   `app.main:app` and honours `$PORT`.
+2. Deploy the backend to Azure App Service using `docs/deploy.md`: confirm the
+   resource shape, pricing tier, Python runtime, startup command for
+   `app.main:app`, and manual verification path before adding deploy automation.
 3. Configure environment variables on the chosen host:
    `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `CORS_ORIGINS`
    (this depends on task 13).
@@ -537,14 +549,14 @@ portfolio improvement after the README.
 5. Run `alembic upgrade head` against the production DB and apply the demo
    seed (task 17).
 6. Add the demo URL and a screenshot or GIF to `README.md`.
-7. (Optional) Document the deploy steps in `docs/deploy.md` so a fresh
-   redeploy is reproducible.
+7. Keep `docs/deploy.md` current so a fresh redeploy is reproducible.
 
 **Depends on:** task 13 (configurable CORS) before going public; task 17
 (seeded dataset) for the demo to feel alive.
 
-**Files to touch:** `Dockerfile` (new), `docs/deploy.md` (optional, new),
-`README.md` (demo link + screenshot).
+**Files to touch:** `docs/deploy.md`, `README.md` (demo link + screenshot).
+Add a `Dockerfile` only if the backend hosting decision is revisited and
+Container Apps/custom container hosting is accepted.
 
 ---
 
@@ -555,7 +567,7 @@ maintained and the test suite isn't aspirational.
 
 **Steps:**
 1. Add `.github/workflows/ci.yml` running on push + PR:
-   - Backend job: `pip install -e ".[dev]"` then `pytest`.
+   - Backend job: `uv sync --locked --extra dev` then `uv run pytest`.
    - Frontend job: `npm ci` then `npm run build` (type-check + bundle).
 2. Add a passing-build badge to the top of `README.md`.
 

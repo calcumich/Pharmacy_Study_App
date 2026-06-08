@@ -90,19 +90,17 @@ flowchart LR
 
 ## Local setup
 
-Requires Python 3.12+ and Node 20+. Docker is optional for local Postgres.
+Requires Python 3.12+, Node 20+, and uv. Docker is optional for local Postgres.
 
 ```bash
 # 1. Optional: start Docker Postgres for local development
 docker compose up -d
 
 # 2. Backend
-python -m venv .venv && .venv\Scripts\activate     # Windows
-# source .venv/bin/activate                        # macOS/Linux
-pip install -e ".[dev]"
+uv sync --extra dev
 cp .env.example .env                               # then fill in mode + database values
-alembic upgrade head
-uvicorn app.main:app --reload                      # http://localhost:8000
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload               # http://localhost:8000
 
 # 3. Frontend (new terminal)
 cd frontend
@@ -111,7 +109,7 @@ cp .env.example .env                               # then fill in auth/API value
 npm run dev                                        # http://localhost:5173
 
 # 4. Tests
-pytest                                             # backend
+uv run pytest                                      # backend
 cd frontend && npm run build                       # type-check + production build
 ```
 

@@ -540,7 +540,13 @@ sync?" check at session start mitigates this but does not eliminate it.
 
 ## 15. Deployment target
 
-**Decision.** Not yet made.
+**Decision.** Originally not yet made at this broad deployment-target level.
+
+**Update 2026-06-05.** This broad deployment-target entry has been narrowed by
+later decisions. Frontend hosting is settled as Azure Static Web Apps in #19.
+Backend hosting is being documented as Azure App Service for the initial deploy,
+with Container Apps as a later revisit path, in #21. The non-Azure candidates
+below remain historical context rather than active first-demo options.
 
 **Candidates on the table.**
 - **Azure** (Container Apps + Static Web Apps; Postgres Flexible Server or
@@ -701,11 +707,12 @@ to the repo. Tool choice is open; not on the critical path.
 ## 19. Frontend hosting: Azure Static Web Apps
 
 **Decision.** Host the Vite frontend on Azure Static Web Apps. The backend
-remains a separate FastAPI service, likely on Azure Container Apps per #15,
-and the browser still talks directly to Supabase for auth. The frontend build
-injects `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`, `VITE_PUBLISHABLE_KEY`,
-`VITE_AUTH_MODE=supabase`, and either `VITE_USE_MOCK=false` for the real demo
-or `VITE_USE_MOCK=true` for a backend-independent fallback demo.
+remains a separate FastAPI service, with Azure App Service as the initial
+backend host per #21, and the browser still talks directly to Supabase for
+auth. The frontend build injects `VITE_API_BASE_URL`, `VITE_SUPABASE_URL`,
+`VITE_PUBLISHABLE_KEY`, `VITE_AUTH_MODE=supabase`, and either
+`VITE_USE_MOCK=false` for the real demo or `VITE_USE_MOCK=true` for a
+backend-independent fallback demo.
 
 **Alternatives considered.**
 - **Vercel.** Best pure frontend developer experience for this app shape:
@@ -726,8 +733,8 @@ or `VITE_USE_MOCK=true` for a backend-independent fallback demo.
 
 **Why Azure Static Web Apps.**
 - The project already leans Azure for the backend, and using SWA keeps the live
-  demo under one cloud story: Static Web Apps for the React bundle, Container
-  Apps for FastAPI, Supabase for Auth/Postgres.
+  demo under one cloud story: Static Web Apps for the React bundle, App Service
+  for the initial FastAPI backend, Supabase for Auth/Postgres.
 - The user's Azure dev credits and Azure resume gap are legitimate decision
   inputs. For a portfolio project, learning and demonstrating Azure deployment
   matters almost as much as raw hosting convenience.
@@ -741,7 +748,7 @@ or `VITE_USE_MOCK=true` for a backend-independent fallback demo.
 - Free tier is enough for a low-traffic portfolio demo: static hosting, SSL,
   custom domains, GitHub integration, and a small number of staging environments.
 - The existing `VITE_USE_MOCK=true` path gives us an escape hatch: even if the
-  Container Apps backend is asleep, broken, or intentionally paused, the public
+  deployed backend is unavailable, broken, or intentionally paused, the public
   frontend can still stay live as a demo shell.
 
 **What we gave up.**
@@ -909,6 +916,181 @@ allows that origin.
 **Status.** Decided.
 ---
 
+## 21. Backend hosting: Azure App Service first
+
+**Decision question.** Should the FastAPI backend be hosted first on Azure App
+Service or Azure Container Apps?
+
+**Context.** The project needs an initial public Azure deployment for a
+low-traffic portfolio/demo app. The frontend host is already settled as Azure
+Static Web Apps (#19). Supabase Cloud remains the database and auth provider
+(#3, #4, #17), and Alembic remains the only migration path (#18). The backend
+is a single FastAPI service with a standard ASGI entry point, environment-based
+configuration, Supabase JWT verification, and a DB-backed `/health` endpoint
+(#20). The next deployment slice should minimize hidden operational complexity
+while preserving a clean path to containerization later.
+
+**Options considered.**
+- **Azure App Service.** Deploy the FastAPI backend as a Python web app on an
+  App Service plan. Configure the startup command to run the ASGI app, set the
+  required environment variables as App Service app settings, and keep the app
+  code free of App Service-specific APIs. This avoids a Dockerfile, container
+  registry, revision model, and Container Apps probe configuration for the first
+  live demo. The tradeoff is that paid App Service plans are plan/instance
+  based rather than true scale-to-zero consumption, so idle cost can be higher
+  than Container Apps Consumption.
+- **Azure Container Apps.** Deploy the backend as a container image, normally
+  with a Dockerfile and image registry. This gives a more container-native path,
+  scale-to-zero on the Consumption plan, explicit startup/liveness/readiness
+  probes, revisions, and a cleaner later story for running the same image on
+  other container platforms. The tradeoff is more initial learning debt:
+  Dockerfile, registry, image tags, Container Apps environment, ingress,
+  secrets, probes, and revision behavior.
+
+**Recommendation.** Use Azure App Service for the initial backend deployment,
+then revisit Azure Container Apps after the demo is live. This keeps the first
+deployment focused on proving the application can run publicly with the
+existing FastAPI/Supabase/Alembic architecture. Treat App Service as a
+deployment wrapper, not an application dependency. Keep portability by using
+environment variables, standard ASGI startup, Alembic migrations, and no
+Azure-specific code in the Python app.
+
+**Questions for the maintainer.**
+- Can I explain how App Service runs a Python/FastAPI app and where the startup
+  command is configured?
+- Can I explain the billing difference between an App Service plan and
+  Container Apps scale-to-zero consumption?
+- Am I comfortable paying for an App Service plan while the demo is idle, or do
+  I need scale-to-zero enough to justify Container Apps now?
+- What exact event should trigger revisiting Container Apps: billing pain,
+  cold-start requirements, Docker reproducibility, deployment friction, or a
+  portfolio goal around containerization?
+- Can I identify which parts of the deployment are Azure-specific and which
+  parts are portable app runtime requirements?
+
+**My current understanding.**
+This decision is mostly about how much of the hosting/runtime layer Azure
+manages for me versus how much I define directly. Azure Container Apps would
+mean packaging the backend as a Docker image and learning container-specific
+deployment concerns such as image builds, registry storage, probes, revisions,
+and scale-to-zero. Azure App Service adds a higher-level hosting abstraction:
+configure the Python runtime, startup command, app settings, and deployment
+path, while Azure handles more of the web-app hosting model.
+
+Container Apps is probably more interesting for learning later, especially if I
+want container deployment practice. For getting the live demo off the ground,
+App Service is the simpler first step.
+
+**Decision.**
+Use Azure App Service first, with a plan to revisit Azure Container Apps and
+containerization after the initial deployment is working.
+
+**Consequences.**
+App Service may create a more constant billing risk because an App Service plan
+can keep costing money while it exists, even when the app is idle. I am using
+Azure credits and will start with the lowest-cost/free practical tier, but I
+need to watch the resource so I do not forget about it.
+
+This choice reduces first-deploy complexity, but also postpones some container
+learning. That is acceptable for now because the current goal is a working live
+demo, not container fluency.
+
+**Reversal trigger.**
+Revisit Container Apps if App Service costs too much, if App Service lacks a
+feature the backend needs, if scale-to-zero becomes important, or if learning
+containerized Azure deployment becomes the next useful project goal.
+
+**Learning debt.**
+The details of Azure App Service versus Azure Container Apps are still fuzzy. I
+need to learn how App Service runs a Python/FastAPI app, how App Service billing
+tiers work, how Azure app settings map to environment variables, and how to
+configure a startup command. I also still need to learn Dockerfiles and the
+details of setting up Container Apps later.
+
+Anything that hard-codes this app to Azure should not go into application code.
+Azure-specific assumptions should live in deployment docs, Azure resource
+configuration, or GitHub Actions workflow files.
+
+**Status.** Decided: App Service first, with Container Apps as a later revisit.
+
+---
+## 22. Python dependency tool
+
+**Decision question.** Should the backend Python workflow stay on pip with a
+`requirements.txt` compatibility file, or should the project standardize on uv
+with a committed `uv.lock`?
+
+**Context.** The backend already uses setuptools/PEP 621 metadata in
+`pyproject.toml`. Azure App Service/Oryx failed during deployment because it
+saw a bare `pyproject.toml`, assumed Poetry, and looked for a `[tool.poetry]`
+section. The project needs a dependency workflow that works locally, in GitHub
+Actions, and during App Service deployment without changing the app runtime,
+database, auth, or hosting decisions.
+
+**Options considered.**
+- **pip plus `requirements.txt`.** Add a runtime dependency list for Azure/Oryx
+  while keeping `pyproject.toml` as project metadata. This is familiar and
+  likely to work with App Service, but it duplicates dependency declarations
+  and creates an ongoing sync responsibility.
+- **pip plus setuptools `pyproject.toml` only.** Keep one dependency source and
+  avoid new tooling. This does not currently solve the App Service/Oryx failure
+  because Oryx treats the bare `pyproject.toml` path as Poetry.
+- **uv plus committed `uv.lock`.** Keep dependencies declared in
+  `pyproject.toml`, commit a lockfile for reproducible installs, use uv locally
+  and in GitHub Actions, and let Oryx detect `pyproject.toml` plus `uv.lock`.
+  This avoids `requirements.txt` duplication, but introduces uv as new project
+  tooling and makes `uv.lock` a file the maintainer must understand.
+- **Poetry.** Change the project to the packaging tool Oryx initially assumed.
+  This would likely satisfy App Service, but it is unnecessary tool churn for a
+  project that already has valid PEP 621 metadata.
+
+**Questions for the maintainer.**
+- Do I want uv to become the standard backend dependency workflow, or only an
+  Azure deployment compatibility fix?
+- Am I comfortable committing and maintaining `uv.lock`?
+- Can I explain how `pyproject.toml` and `uv.lock` relate to each other?
+- If App Service still fails with uv, would I rather add `requirements.txt` or
+  move toward a prebuilt artifact deployment path?
+
+**My current understanding.** When we deploy an app to Azure, it uses an
+automated build process to rebuild the solution based on the code. It has a few
+different package managers it could use, including pip, Poetry, and uv. Pip is
+the package manager that I have used for a while, so that was most familiar.
+Worth mentioning that we decided to use `pyproject.toml` instead of
+`requirements.txt` for this project. `pyproject.toml` seems to function like
+`requirements.txt` but with some additional contextual data (for example,
+optional dev dependencies). `pyproject.toml` works with pip with a simple
+command: `pip install -e .`. However, that setup is not the path Azure Web Apps
+is choosing during its Oryx build. So we had a few options: add a
+`requirements.txt` and continue using pip while duplicating `pyproject.toml`,
+switch to uv, or switch to Poetry. I only vaguely know of Poetry, but I have
+heard that uv is an up-and-coming tool that's faster than pip. It seems
+beneficial to move to uv if possible. uv does provide a locking mechanism,
+which seems similar to `package-lock.json` in the npm environment.
+
+**Decision.** Keep `pyproject.toml`, but move to uv as our package manager. Add
+a `uv.lock` file so that Azure runs with uv.
+
+**Consequences.** Easiest to develop using uv. Need to update the workflow to
+keep `uv.lock` up to date.
+
+**Reversal trigger.** If Azure Web Apps still does not run properly with uv,
+and it seems like fixing it will require more changes than this is worth.
+
+**Learning debt.** Could learn more about Poetry; I kind of discounted it. I
+don't know what Oryx is (Azure's build system tool? Tool not specific to
+Azure?) but that was driving what build dependency system was being pulled in.
+I'm kind of assuming "uv is new and fast, uv must be better", but I couldn't
+give a detailed breakdown of the real practical benefits of uv compared to pip.
+I also don't know the workflow that will keep uv up to date. My understanding
+is that uv also serves as an environment controller, but I'm not certain on
+this.
+
+**Status.** Settled.
+
+
+---
+
 ## How to add to this document
 
 When a non-trivial decision gets made:
@@ -922,3 +1104,36 @@ When a non-trivial decision gets made:
    entry** — strike it through and add a "Superseded by #N" pointer. The
    reasoning that was wrong is as useful as the reasoning that was right.
 4. (6/4/26) Follow the format described in `docs/ai-collaboration.md`.
+
+## Decision entry template
+
+Copy this template when adding a new decision to this file. Keep the section
+number in sequence and delete sections that genuinely do not apply. Older
+entries may not use this format.
+
+```md
+## Decision Worksheet: Title
+
+**Decision question.** What needs to be decided?
+
+**Context.** Why does this matter now?
+
+**Options considered.**
+- **Option A.** What it means technically; tradeoffs.
+- **Option B.** What it means technically; tradeoffs.
+
+**Questions for the maintainer.** What must the human decide or explain?
+
+**My current understanding.** Maintainer-owned.
+
+**Decision.** Maintainer-owned.
+
+**Consequences.** Maintainer-owned.
+
+**Reversal trigger.** Maintainer-owned.
+
+**Learning debt.** Maintainer-owned.
+
+**Status.** Settled / Revisit-when / Open.
+
+```
