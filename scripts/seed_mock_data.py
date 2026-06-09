@@ -19,12 +19,13 @@ import uuid
 
 from dotenv import load_dotenv
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 # Allow imports from the project root.
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from app.db.engine import create_database_engine
 from app.models.drugs import Drug, DrugClass, DrugIndication, DrugAdr, DrugMetabolism
 
 load_dotenv(override=True)
@@ -254,7 +255,7 @@ DRUGS = [
 
 
 async def main() -> None:
-    engine = create_async_engine(DATABASE_URL, echo=False)
+    engine = create_database_engine(DATABASE_URL, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:

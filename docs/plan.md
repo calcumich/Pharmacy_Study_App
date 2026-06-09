@@ -472,7 +472,15 @@ the design in ~60 seconds without reading code.
 
 ---
 
-### [ ] 17. Seeded demo dataset (~50 drugs)
+### [~] 17. Seeded demo dataset (~50 drugs)
+
+**Status note 2026-06-09:** First real seed slice added: 19 curated drugs across
+beta-lactams, macrolides, fluoroquinolones, PPIs, statins, ACE inhibitors, beta
+blockers, and antithrombotics. `data/demo_seed.json` stores the committed
+content, `scripts/seed_demo.py` validates and idempotently upserts it, and
+`docs/demo-seed.md` documents local and production apply steps. Remaining work:
+expand toward ~50 drugs and decide whether to mirror the larger seed in mock
+mode.
 
 **Goal:** First-run experience currently shows 7 mock drugs in mock mode
 and an empty DB in real mode. Land a realistic seed of ~50 drugs across

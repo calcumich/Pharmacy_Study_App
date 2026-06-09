@@ -24,6 +24,7 @@ if config.config_file_name is not None:
 # Alembic autogenerate walks Base.metadata; every model must be imported here.
 
 from app.models.base import Base  # noqa: E402
+from app.db.engine import asyncpg_connect_args  # noqa: E402
 from app.models.drugs import (  # noqa: E402, F401
     DrugClass, AttributeType, Drug, DrugIndication, DrugAdr, DrugMetabolism,
 )
@@ -77,6 +78,7 @@ async def run_async_migrations() -> None:
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=asyncpg_connect_args(configuration["sqlalchemy.url"]),
     )
 
     async with connectable.connect() as connection:
