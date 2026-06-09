@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = ""
     CORS_ORIGINS: str = "http://localhost:5173"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
     @model_validator(mode="after")
     def validate_auth_mode(self) -> "Settings":

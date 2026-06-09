@@ -12,10 +12,12 @@ from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from app.db.engine import create_database_engine  # noqa: E402
 
 DEFAULT_SEED_PATH = Path(__file__).resolve().parent.parent / "data" / "demo_seed.json"
 VALID_SEVERITIES = {"minor", "moderate", "major", "contraindicated"}
@@ -333,7 +335,7 @@ async def main() -> None:
         )
 
     data = load_seed_data(args.seed_file)
-    engine = create_async_engine(database_url, echo=False)
+    engine = create_database_engine(database_url, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     try:

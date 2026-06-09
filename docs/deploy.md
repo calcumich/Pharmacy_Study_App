@@ -152,6 +152,11 @@ Keep the host, port, username, project ref, and database path exactly as
 Supabase provides them. The `+asyncpg` part is for SQLAlchemy's async driver;
 Supabase will not show that form in the dashboard.
 
+Supabase pooler URLs are PgBouncer-style pooled connections. The app detects
+hosts ending in `.pooler.supabase.com` and disables asyncpg's prepared statement
+cache for those connections. Without that compatibility setting, asyncpg can
+raise duplicate prepared statement errors when used through the pooler.
+
 `DATABASE_URL` is a secret because it includes the database password. Do not
 commit the real value to docs, source code, or GitHub Actions workflow files.
 

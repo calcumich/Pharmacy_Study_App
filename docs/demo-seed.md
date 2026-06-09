@@ -107,6 +107,27 @@ uv run python scripts/seed_demo.py --yes-production
 The `--yes-production` flag is required when `APP_ENV` is `production` or
 `staging`, or when the database URL looks like a Supabase host.
 
+### Supabase Pooler And Prepared Statements
+
+Supabase pooler URLs use PgBouncer-style pooling. With asyncpg, PgBouncer
+transaction or statement pooling can conflict with asyncpg's prepared statement
+cache and raise an error like:
+
+```text
+DuplicatePreparedStatementError: prepared statement "__asyncpg_stmt_1__" already exists
+```
+
+The project handles this by detecting Supabase pooler hosts ending in
+`.pooler.supabase.com` and creating asyncpg connections with:
+
+```python
+statement_cache_size = 0
+```
+
+This is configured centrally in `app/db/engine.py` and used by the FastAPI app,
+Alembic, and seed scripts. Direct Postgres URLs and local Docker URLs keep the
+default asyncpg behavior.
+
 ## Validation
 
 Run the tests that validate seed shape and the broader backend behavior:
