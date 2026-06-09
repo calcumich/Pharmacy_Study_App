@@ -18,7 +18,7 @@ jobs:
        id-token: write
        contents: read
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: true
           lfs: false
@@ -35,6 +35,12 @@ jobs:
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
+        env:
+          VITE_USE_MOCK: "false"
+          VITE_AUTH_MODE: "supabase"
+          VITE_API_BASE_URL: "https://pharmacy-study-app-cyeua7fzdwc3ecax.canadacentral-01.azurewebsites.net"
+          VITE_SUPABASE_URL: "https://plbbksauzospamizitrj.supabase.co"
+          VITE_PUBLISHABLE_KEY: ${{ secrets.VITE_PUBLISHABLE_KEY }}
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_RED_WATER_007A6DC0F }}
           action: "upload"
