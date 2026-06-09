@@ -1,0 +1,489 @@
+{
+  "classes": [
+    {
+      "slug": "antibiotics",
+      "name": "Antibiotics",
+      "description": "Antimicrobial agents used to treat bacterial infections",
+      "parent_slug": null
+    },
+    {
+      "slug": "beta-lactams",
+      "name": "Beta-Lactams",
+      "description": "Cell-wall active antibiotics containing a beta-lactam ring",
+      "parent_slug": "antibiotics"
+    },
+    {
+      "slug": "penicillins",
+      "name": "Penicillins",
+      "description": "Beta-lactam antibiotics derived from the penicillin nucleus",
+      "parent_slug": "beta-lactams"
+    },
+    {
+      "slug": "cephalosporins",
+      "name": "Cephalosporins",
+      "description": "Beta-lactam antibiotics grouped by generation and spectrum",
+      "parent_slug": "beta-lactams"
+    },
+    {
+      "slug": "macrolides",
+      "name": "Macrolides",
+      "description": "Protein synthesis inhibitors that bind the 50S ribosomal subunit",
+      "parent_slug": "antibiotics"
+    },
+    {
+      "slug": "fluoroquinolones",
+      "name": "Fluoroquinolones",
+      "description": "DNA gyrase and topoisomerase IV inhibitors",
+      "parent_slug": "antibiotics"
+    },
+    {
+      "slug": "gastrointestinal",
+      "name": "Gastrointestinal",
+      "description": "Drugs used for acid suppression and digestive disorders",
+      "parent_slug": null
+    },
+    {
+      "slug": "proton-pump-inhibitors",
+      "name": "Proton Pump Inhibitors",
+      "description": "Acid suppressants that inhibit the gastric H/K ATPase",
+      "parent_slug": "gastrointestinal"
+    },
+    {
+      "slug": "cardiovascular",
+      "name": "Cardiovascular",
+      "description": "Drugs acting on the heart, vasculature, and hemostasis",
+      "parent_slug": null
+    },
+    {
+      "slug": "statins",
+      "name": "Statins",
+      "description": "HMG-CoA reductase inhibitors used for lipid lowering",
+      "parent_slug": "cardiovascular"
+    },
+    {
+      "slug": "ace-inhibitors",
+      "name": "ACE Inhibitors",
+      "description": "Inhibit angiotensin-converting enzyme",
+      "parent_slug": "cardiovascular"
+    },
+    {
+      "slug": "beta-blockers",
+      "name": "Beta Blockers",
+      "description": "Adrenergic beta receptor antagonists",
+      "parent_slug": "cardiovascular"
+    },
+    {
+      "slug": "antithrombotics",
+      "name": "Antithrombotics",
+      "description": "Anticoagulant and antiplatelet drugs used to prevent thrombosis",
+      "parent_slug": "cardiovascular"
+    }
+  ],
+  "drugs": [
+    {
+      "slug": "amoxicillin",
+      "name": "Amoxicillin",
+      "generic_name": "amoxicillin",
+      "class_slug": "penicillins",
+      "attributes": {
+        "moa": "Aminopenicillin beta-lactam; binds penicillin-binding proteins and inhibits bacterial cell-wall peptidoglycan cross-linking.",
+        "half_life": "About 1 to 1.5 hours"
+      },
+      "indications": ["Otitis media", "Streptococcal pharyngitis", "Community-acquired pneumonia", "H. pylori eradication regimens"],
+      "adrs": ["Diarrhea", "Rash", "Hypersensitivity reactions", "C. difficile-associated diarrhea"],
+      "metabolism": ["Minimal hepatic metabolism", "Primarily renal elimination", "Probenecid can increase amoxicillin concentrations"]
+    },
+    {
+      "slug": "cephalexin",
+      "name": "Cephalexin",
+      "generic_name": "cephalexin",
+      "class_slug": "cephalosporins",
+      "attributes": {
+        "moa": "First-generation cephalosporin; inhibits bacterial cell-wall synthesis by binding penicillin-binding proteins.",
+        "half_life": "About 1 hour"
+      },
+      "indications": ["Skin and soft tissue infections", "Streptococcal pharyngitis", "Uncomplicated urinary tract infection", "Bone infections due to susceptible organisms"],
+      "adrs": ["Diarrhea", "Nausea", "Rash", "Hypersensitivity reactions"],
+      "metabolism": ["Not extensively metabolized", "Primarily excreted unchanged in urine", "Dose adjustment may be needed in renal impairment"]
+    },
+    {
+      "slug": "ceftriaxone",
+      "name": "Ceftriaxone",
+      "generic_name": "ceftriaxone",
+      "class_slug": "cephalosporins",
+      "attributes": {
+        "moa": "Third-generation cephalosporin; inhibits bacterial cell-wall synthesis with broad gram-negative activity.",
+        "half_life": "About 6 to 9 hours"
+      },
+      "indications": ["Community-acquired pneumonia", "Meningitis", "Gonorrhea", "Complicated urinary tract infection", "Sepsis due to susceptible organisms"],
+      "adrs": ["Biliary sludging", "Diarrhea", "Rash", "Hypersensitivity reactions", "C. difficile-associated diarrhea"],
+      "metabolism": ["Not meaningfully CYP metabolized", "Dual biliary and renal elimination", "Avoid calcium-containing IV solutions in neonates"]
+    },
+    {
+      "slug": "azithromycin",
+      "name": "Azithromycin",
+      "generic_name": "azithromycin",
+      "class_slug": "macrolides",
+      "attributes": {
+        "moa": "Macrolide antibiotic; binds the 50S ribosomal subunit and inhibits bacterial protein synthesis.",
+        "half_life": "About 68 hours"
+      },
+      "indications": ["Community-acquired pneumonia", "Chlamydia infection", "Acute bacterial sinusitis", "COPD exacerbation"],
+      "adrs": ["GI upset", "QT prolongation", "Headache", "Hepatotoxicity"],
+      "metabolism": ["Limited CYP3A4 inhibition compared with clarithromycin", "Extensive tissue distribution", "Primarily biliary elimination"]
+    },
+    {
+      "slug": "clarithromycin",
+      "name": "Clarithromycin",
+      "generic_name": "clarithromycin",
+      "class_slug": "macrolides",
+      "attributes": {
+        "moa": "Macrolide antibiotic; binds the 50S ribosomal subunit and inhibits bacterial protein synthesis.",
+        "half_life": "About 3 to 7 hours"
+      },
+      "indications": ["Community-acquired pneumonia", "H. pylori eradication regimens", "Acute bacterial exacerbation of chronic bronchitis", "Mycobacterial infections"],
+      "adrs": ["GI upset", "Dysgeusia", "QT prolongation", "Hepatotoxicity"],
+      "metabolism": ["CYP3A substrate and inhibitor", "Active 14-hydroxy metabolite", "Renal dose adjustment may be needed"]
+    },
+    {
+      "slug": "ciprofloxacin",
+      "name": "Ciprofloxacin",
+      "generic_name": "ciprofloxacin",
+      "class_slug": "fluoroquinolones",
+      "attributes": {
+        "moa": "Fluoroquinolone antibiotic; inhibits bacterial DNA gyrase and topoisomerase IV.",
+        "half_life": "About 4 hours"
+      },
+      "indications": ["Complicated urinary tract infection", "Pyelonephritis", "Infectious diarrhea", "Pseudomonal infections when susceptible"],
+      "adrs": ["Tendinopathy and tendon rupture", "QT prolongation", "CNS effects", "Dysglycemia", "C. difficile-associated diarrhea"],
+      "metabolism": ["Partial hepatic metabolism", "Renal elimination", "CYP1A2 inhibitor"]
+    },
+    {
+      "slug": "levofloxacin",
+      "name": "Levofloxacin",
+      "generic_name": "levofloxacin",
+      "class_slug": "fluoroquinolones",
+      "attributes": {
+        "moa": "Fluoroquinolone antibiotic; inhibits bacterial DNA gyrase and topoisomerase IV.",
+        "half_life": "About 6 to 8 hours"
+      },
+      "indications": ["Community-acquired pneumonia", "Complicated urinary tract infection", "Acute bacterial sinusitis", "Skin and soft tissue infections"],
+      "adrs": ["Tendinopathy and tendon rupture", "QT prolongation", "CNS effects", "Peripheral neuropathy", "Dysglycemia"],
+      "metabolism": ["Limited metabolism", "Primarily renal elimination", "Dose adjustment needed in renal impairment"]
+    },
+    {
+      "slug": "omeprazole",
+      "name": "Omeprazole",
+      "generic_name": "omeprazole",
+      "class_slug": "proton-pump-inhibitors",
+      "attributes": {
+        "moa": "Proton pump inhibitor; irreversibly inhibits the gastric parietal cell H/K ATPase.",
+        "half_life": "About 0.5 to 1 hour; acid suppression lasts longer"
+      },
+      "indications": ["GERD", "Peptic ulcer disease", "Erosive esophagitis", "H. pylori eradication regimens"],
+      "adrs": ["Headache", "Diarrhea", "Hypomagnesemia with prolonged use", "Vitamin B12 deficiency with prolonged use", "C. difficile-associated diarrhea"],
+      "metabolism": ["CYP2C19 and CYP3A4 metabolism", "Can inhibit CYP2C19", "Hepatic elimination"]
+    },
+    {
+      "slug": "pantoprazole",
+      "name": "Pantoprazole",
+      "generic_name": "pantoprazole",
+      "class_slug": "proton-pump-inhibitors",
+      "attributes": {
+        "moa": "Proton pump inhibitor; irreversibly inhibits the gastric parietal cell H/K ATPase.",
+        "half_life": "About 1 hour; acid suppression lasts longer"
+      },
+      "indications": ["GERD", "Erosive esophagitis", "Pathologic hypersecretory conditions", "Stress ulcer prophylaxis in selected patients"],
+      "adrs": ["Headache", "Diarrhea", "Hypomagnesemia with prolonged use", "Fracture risk signal with prolonged use"],
+      "metabolism": ["Primarily CYP2C19 metabolism with contribution from CYP3A4", "Less CYP2C19 inhibition than omeprazole", "Hepatic elimination"]
+    },
+    {
+      "slug": "atorvastatin",
+      "name": "Atorvastatin",
+      "generic_name": "atorvastatin",
+      "class_slug": "statins",
+      "attributes": {
+        "moa": "HMG-CoA reductase inhibitor; reduces hepatic cholesterol synthesis and increases LDL receptor activity.",
+        "half_life": "About 14 hours; active metabolites last longer"
+      },
+      "indications": ["Primary hyperlipidemia", "Mixed dyslipidemia", "ASCVD risk reduction", "Familial hypercholesterolemia"],
+      "adrs": ["Myalgia", "Myopathy", "Rhabdomyolysis", "Elevated transaminases", "New-onset diabetes signal"],
+      "metabolism": ["CYP3A4 substrate", "Active metabolites", "OATP1B1 substrate", "Biliary elimination"]
+    },
+    {
+      "slug": "simvastatin",
+      "name": "Simvastatin",
+      "generic_name": "simvastatin",
+      "class_slug": "statins",
+      "attributes": {
+        "moa": "HMG-CoA reductase inhibitor prodrug; reduces cholesterol synthesis and increases LDL clearance.",
+        "half_life": "About 2 hours for active beta-hydroxyacid metabolite"
+      },
+      "indications": ["Primary hyperlipidemia", "Mixed dyslipidemia", "ASCVD risk reduction"],
+      "adrs": ["Myalgia", "Myopathy", "Rhabdomyolysis", "Elevated transaminases"],
+      "metabolism": ["CYP3A4 substrate", "Lactone prodrug converted to active metabolite", "High interaction sensitivity with strong CYP3A4 inhibitors"]
+    },
+    {
+      "slug": "pravastatin",
+      "name": "Pravastatin",
+      "generic_name": "pravastatin",
+      "class_slug": "statins",
+      "attributes": {
+        "moa": "HMG-CoA reductase inhibitor; reduces cholesterol synthesis and increases LDL receptor activity.",
+        "half_life": "About 1.5 to 2 hours"
+      },
+      "indications": ["Primary hyperlipidemia", "ASCVD risk reduction", "Familial hypercholesterolemia"],
+      "adrs": ["Myalgia", "Myopathy", "Elevated transaminases", "Rhabdomyolysis rarely"],
+      "metabolism": ["Not significantly metabolized by CYP3A4", "Sulfation and other non-CYP pathways", "Renal and biliary elimination"]
+    },
+    {
+      "slug": "lisinopril",
+      "name": "Lisinopril",
+      "generic_name": "lisinopril",
+      "class_slug": "ace-inhibitors",
+      "attributes": {
+        "moa": "ACE inhibitor; reduces angiotensin II formation, aldosterone secretion, and bradykinin degradation.",
+        "half_life": "About 12 hours"
+      },
+      "indications": ["Hypertension", "Heart failure", "Post-MI management", "Diabetic kidney disease"],
+      "adrs": ["Cough", "Hyperkalemia", "Angioedema", "Hypotension", "Fetal toxicity"],
+      "metabolism": ["Not hepatically metabolized", "Excreted unchanged in urine", "Dose adjustment needed in renal impairment"]
+    },
+    {
+      "slug": "enalapril",
+      "name": "Enalapril",
+      "generic_name": "enalapril",
+      "class_slug": "ace-inhibitors",
+      "attributes": {
+        "moa": "ACE inhibitor prodrug; active enalaprilat reduces angiotensin II formation and aldosterone secretion.",
+        "half_life": "About 11 hours for enalaprilat"
+      },
+      "indications": ["Hypertension", "Heart failure", "Asymptomatic left ventricular dysfunction"],
+      "adrs": ["Cough", "Hyperkalemia", "Angioedema", "Hypotension", "Fetal toxicity"],
+      "metabolism": ["Hepatic hydrolysis to enalaprilat", "Renal elimination", "Dose adjustment needed in renal impairment"]
+    },
+    {
+      "slug": "metoprolol",
+      "name": "Metoprolol",
+      "generic_name": "metoprolol tartrate/succinate",
+      "class_slug": "beta-blockers",
+      "attributes": {
+        "moa": "Beta-1 selective adrenergic blocker; lowers heart rate, contractility, and AV nodal conduction.",
+        "half_life": "About 3 to 7 hours"
+      },
+      "indications": ["Hypertension", "Angina", "Heart failure with reduced ejection fraction", "Post-MI secondary prevention", "Rate control in atrial fibrillation"],
+      "adrs": ["Bradycardia", "Fatigue", "Hypotension", "Depression", "Bronchospasm at higher doses"],
+      "metabolism": ["CYP2D6 substrate", "Extensive hepatic metabolism", "Poor metabolizers may have increased exposure"]
+    },
+    {
+      "slug": "propranolol",
+      "name": "Propranolol",
+      "generic_name": "propranolol",
+      "class_slug": "beta-blockers",
+      "attributes": {
+        "moa": "Nonselective beta-1 and beta-2 adrenergic blocker; reduces sympathetic cardiac effects.",
+        "half_life": "About 3 to 6 hours"
+      },
+      "indications": ["Hypertension", "Angina", "Migraine prophylaxis", "Essential tremor", "Thyrotoxicosis symptom control"],
+      "adrs": ["Bradycardia", "Fatigue", "Bronchospasm", "Sleep disturbance", "Masks hypoglycemia symptoms"],
+      "metabolism": ["Hepatic metabolism", "CYP2D6, CYP1A2, and CYP2C19 involvement", "High first-pass metabolism"]
+    },
+    {
+      "slug": "warfarin",
+      "name": "Warfarin",
+      "generic_name": "warfarin sodium",
+      "class_slug": "antithrombotics",
+      "attributes": {
+        "moa": "Vitamin K antagonist; inhibits VKORC1 and reduces activation of clotting factors II, VII, IX, and X.",
+        "half_life": "About 20 to 60 hours"
+      },
+      "indications": ["Atrial fibrillation stroke prevention", "Venous thromboembolism treatment", "Venous thromboembolism prevention", "Mechanical heart valve anticoagulation"],
+      "adrs": ["Bleeding", "Skin necrosis", "Purple toe syndrome", "Teratogenicity", "Many drug and diet interactions"],
+      "metabolism": ["CYP2C9 metabolism for more potent S-warfarin", "CYP1A2 and CYP3A4 contribute to R-warfarin metabolism", "INR monitoring required"]
+    },
+    {
+      "slug": "apixaban",
+      "name": "Apixaban",
+      "generic_name": "apixaban",
+      "class_slug": "antithrombotics",
+      "attributes": {
+        "moa": "Direct oral anticoagulant; selectively inhibits factor Xa.",
+        "half_life": "About 12 hours"
+      },
+      "indications": ["Atrial fibrillation stroke prevention", "Venous thromboembolism treatment", "Venous thromboembolism prevention after hip or knee replacement"],
+      "adrs": ["Bleeding", "Anemia", "Nausea", "Spinal or epidural hematoma risk with neuraxial procedures"],
+      "metabolism": ["CYP3A4 substrate", "P-gp substrate", "Renal and fecal elimination"]
+    },
+    {
+      "slug": "clopidogrel",
+      "name": "Clopidogrel",
+      "generic_name": "clopidogrel",
+      "class_slug": "antithrombotics",
+      "attributes": {
+        "moa": "P2Y12 ADP receptor antagonist prodrug; inhibits platelet activation and aggregation.",
+        "half_life": "About 6 hours for parent drug; active metabolite is short lived"
+      },
+      "indications": ["Acute coronary syndrome", "Recent myocardial infarction", "Recent ischemic stroke", "Established peripheral arterial disease", "Post-PCI antiplatelet therapy"],
+      "adrs": ["Bleeding", "Bruising", "GI upset", "Thrombotic thrombocytopenic purpura rarely"],
+      "metabolism": ["Prodrug activated mainly through CYP2C19", "CYP2C19 inhibitors can reduce antiplatelet activity", "Irreversibly inhibits platelets for their lifespan"]
+    }
+  ],
+  "interactions": [
+    {
+      "drug_slugs": ["clarithromycin", "simvastatin"],
+      "severity": "contraindicated",
+      "description": "Clarithromycin can strongly inhibit CYP3A4 and markedly increase simvastatin exposure, increasing myopathy and rhabdomyolysis risk.",
+      "details": {"mechanism": "CYP3A4 inhibition", "management": "Avoid combination; hold simvastatin or use a non-CYP3A4 statin when appropriate."}
+    },
+    {
+      "drug_slugs": ["clarithromycin", "atorvastatin"],
+      "severity": "major",
+      "description": "Clarithromycin can increase atorvastatin exposure and myopathy risk through CYP3A4 inhibition.",
+      "details": {"mechanism": "CYP3A4 inhibition", "management": "Avoid when possible or monitor closely; consider temporary statin interruption."}
+    },
+    {
+      "drug_slugs": ["clarithromycin", "apixaban"],
+      "severity": "moderate",
+      "description": "Clarithromycin may increase apixaban exposure through combined CYP3A4 and P-gp inhibition.",
+      "details": {"mechanism": "CYP3A4/P-gp inhibition", "management": "Assess bleeding risk and follow product-label guidance."}
+    },
+    {
+      "drug_slugs": ["clarithromycin", "warfarin"],
+      "severity": "major",
+      "description": "Macrolides can increase anticoagulant effect in warfarin-treated patients, increasing bleeding risk.",
+      "details": {"mechanism": "Altered metabolism and gut flora effects", "management": "Check INR more frequently during and after therapy."}
+    },
+    {
+      "drug_slugs": ["azithromycin", "warfarin"],
+      "severity": "moderate",
+      "description": "Azithromycin has reported INR elevation risk in warfarin-treated patients despite less CYP inhibition than clarithromycin.",
+      "details": {"mechanism": "Possible anticoagulant effect potentiation", "management": "Monitor INR and bleeding signs."}
+    },
+    {
+      "drug_slugs": ["ciprofloxacin", "warfarin"],
+      "severity": "major",
+      "description": "Ciprofloxacin can increase INR and bleeding risk in patients taking warfarin.",
+      "details": {"mechanism": "CYP inhibition and gut flora effects", "management": "Monitor INR closely; adjust warfarin if needed."}
+    },
+    {
+      "drug_slugs": ["levofloxacin", "warfarin"],
+      "severity": "major",
+      "description": "Levofloxacin can increase INR and bleeding risk in patients taking warfarin.",
+      "details": {"mechanism": "Anticoagulant effect potentiation", "management": "Monitor INR closely."}
+    },
+    {
+      "drug_slugs": ["omeprazole", "clopidogrel"],
+      "severity": "major",
+      "description": "Omeprazole can reduce clopidogrel antiplatelet activity by inhibiting CYP2C19 activation.",
+      "details": {"mechanism": "CYP2C19 inhibition", "management": "Avoid omeprazole when possible; consider alternatives such as pantoprazole when clinically appropriate."}
+    },
+    {
+      "drug_slugs": ["pantoprazole", "clopidogrel"],
+      "severity": "minor",
+      "description": "Pantoprazole has a less pronounced effect on clopidogrel activity than omeprazole but still exercises the PPI comparison card.",
+      "details": {"mechanism": "Lower CYP2C19 inhibition signal", "management": "Often preferred over omeprazole when a PPI is needed with clopidogrel."}
+    },
+    {
+      "drug_slugs": ["warfarin", "clopidogrel"],
+      "severity": "major",
+      "description": "Combining anticoagulant and antiplatelet therapy increases bleeding risk.",
+      "details": {"mechanism": "Additive antithrombotic effects", "management": "Use only with clear indication and monitor bleeding closely."}
+    },
+    {
+      "drug_slugs": ["apixaban", "clopidogrel"],
+      "severity": "major",
+      "description": "Combining apixaban with antiplatelet therapy increases bleeding risk.",
+      "details": {"mechanism": "Additive antithrombotic effects", "management": "Use the shortest appropriate duration when combination therapy is indicated."}
+    },
+    {
+      "drug_slugs": ["warfarin", "apixaban"],
+      "severity": "contraindicated",
+      "description": "Concurrent therapeutic anticoagulants generally duplicate anticoagulation and substantially increase bleeding risk.",
+      "details": {"mechanism": "Duplicate anticoagulant therapy", "management": "Do not overlap except under a specific transition protocol."}
+    },
+    {
+      "drug_slugs": ["ciprofloxacin", "simvastatin"],
+      "severity": "moderate",
+      "description": "Fluoroquinolone and statin coadministration has a myopathy signal and ciprofloxacin may add interaction risk.",
+      "details": {"mechanism": "Possible transporter/metabolic contribution", "management": "Counsel on muscle pain and weakness."}
+    },
+    {
+      "drug_slugs": ["ciprofloxacin", "propranolol"],
+      "severity": "moderate",
+      "description": "Ciprofloxacin can inhibit CYP1A2 and may increase exposure to some beta blockers such as propranolol.",
+      "details": {"mechanism": "CYP1A2 inhibition", "management": "Monitor for bradycardia or hypotension."}
+    },
+    {
+      "drug_slugs": ["metoprolol", "propranolol"],
+      "severity": "major",
+      "description": "Combining beta blockers duplicates beta blockade and increases risk of bradycardia, hypotension, and heart block.",
+      "details": {"mechanism": "Duplicate pharmacodynamic effect", "management": "Avoid routine combination."}
+    },
+    {
+      "drug_slugs": ["lisinopril", "enalapril"],
+      "severity": "major",
+      "description": "Combining ACE inhibitors duplicates RAAS blockade and increases hypotension, renal impairment, and hyperkalemia risk.",
+      "details": {"mechanism": "Duplicate ACE inhibition", "management": "Avoid routine combination."}
+    },
+    {
+      "drug_slugs": ["lisinopril", "warfarin"],
+      "severity": "minor",
+      "description": "No major direct interaction is expected; included as a low-severity comparator card.",
+      "details": {"mechanism": "No major direct CYP or pharmacodynamic overlap", "management": "Routine monitoring."}
+    },
+    {
+      "drug_slugs": ["lisinopril", "apixaban"],
+      "severity": "minor",
+      "description": "No major direct interaction is expected; included as a low-severity comparator card.",
+      "details": {"mechanism": "No major direct CYP or pharmacodynamic overlap", "management": "Routine monitoring."}
+    },
+    {
+      "drug_slugs": ["amoxicillin", "warfarin"],
+      "severity": "moderate",
+      "description": "Some antibiotics can alter INR control in warfarin-treated patients.",
+      "details": {"mechanism": "Possible gut flora and illness effects", "management": "Monitor INR when clinically warranted."}
+    },
+    {
+      "drug_slugs": ["ceftriaxone", "warfarin"],
+      "severity": "moderate",
+      "description": "Cephalosporins may potentiate anticoagulant effect in some warfarin-treated patients.",
+      "details": {"mechanism": "Possible vitamin K/gut flora effects", "management": "Monitor INR and bleeding signs."}
+    },
+    {
+      "drug_slugs": ["omeprazole", "warfarin"],
+      "severity": "moderate",
+      "description": "Omeprazole may affect warfarin exposure or INR control in some patients.",
+      "details": {"mechanism": "CYP interaction potential", "management": "Monitor INR after starting or stopping therapy."}
+    },
+    {
+      "drug_slugs": ["azithromycin", "levofloxacin"],
+      "severity": "major",
+      "description": "Both drugs can prolong QT interval, increasing additive arrhythmia risk.",
+      "details": {"mechanism": "Additive QT prolongation", "management": "Avoid combination in high-risk patients when alternatives exist."}
+    },
+    {
+      "drug_slugs": ["clarithromycin", "levofloxacin"],
+      "severity": "major",
+      "description": "Both drugs can prolong QT interval, increasing additive arrhythmia risk.",
+      "details": {"mechanism": "Additive QT prolongation", "management": "Avoid combination in high-risk patients when alternatives exist."}
+    },
+    {
+      "drug_slugs": ["ciprofloxacin", "levofloxacin"],
+      "severity": "major",
+      "description": "Combining fluoroquinolones duplicates therapy and toxicity risk without a routine therapeutic role.",
+      "details": {"mechanism": "Duplicate antimicrobial class", "management": "Avoid routine combination."}
+    },
+    {
+      "drug_slugs": ["atorvastatin", "simvastatin"],
+      "severity": "major",
+      "description": "Combining statins duplicates lipid-lowering therapy and increases myopathy risk.",
+      "details": {"mechanism": "Duplicate statin therapy", "management": "Avoid routine combination."}
+    },
+    {
+      "drug_slugs": ["atorvastatin", "pravastatin"],
+      "severity": "major",
+      "description": "Combining statins duplicates lipid-lowering therapy and increases myopathy risk.",
+      "details": {"mechanism": "Duplicate statin therapy", "management": "Avoid routine combination."}
+    }
+  ]
+}

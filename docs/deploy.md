@@ -173,6 +173,18 @@ Then run:
 uv run alembic upgrade head
 ```
 
+After migrations are applied, seed the curated demo dataset so the real app is
+not empty:
+
+```bash
+uv run python scripts/seed_demo.py --yes-production
+```
+
+The seed script prints a sanitized database target before writing. Confirm it
+points at the intended Supabase project. The `--yes-production` flag is required
+for production-like targets so this step cannot be run accidentally against a
+cloud database.
+
 After the command succeeds, verify Supabase contains the app schema:
 
 - `alembic_version`
@@ -183,6 +195,8 @@ After the command succeeds, verify Supabase contains the app schema:
 - `review_events`
 - `srs_state`
 - `flashcard_state`
+- seeded rows in `drug_classes`, `drugs`, list attribute tables, and
+  `drug_interactions`
 
 `/health` only proves the backend can run `SELECT 1`; it does not prove the app
 tables exist. Check the migrated tables before treating the cloud database as
@@ -252,7 +266,9 @@ Manual-first backend deploy:
 3. Confirm the startup command is configured.
 4. Confirm all backend app settings are present.
 5. Run `uv run alembic upgrade head` against the Supabase production database.
-6. Open the backend URL and check `GET /health`.
+6. Run `uv run python scripts/seed_demo.py --yes-production` after confirming
+   the printed database target.
+7. Open the backend URL and check `GET /health`.
 
 Do not run migrations blindly against production. Confirm `DATABASE_URL` points
 to the intended Supabase project before running Alembic.

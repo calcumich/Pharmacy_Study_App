@@ -100,6 +100,7 @@ docker compose up -d
 uv sync --extra dev
 cp .env.example .env                               # then fill in mode + database values
 uv run alembic upgrade head
+uv run python scripts/seed_demo.py                 # optional but recommended real demo data
 uv run uvicorn app.main:app --reload               # http://localhost:8000
 
 # 3. Frontend (new terminal)
@@ -116,6 +117,10 @@ cd frontend && npm run build                       # type-check + production bui
 **Mock mode.** Setting `VITE_USE_MOCK=true` in `frontend/.env` swaps the entire
 API layer for static data — the app runs end-to-end with no backend or DB.
 Useful for UI work and the demo path.
+
+**Real demo seed.** `data/demo_seed.json` plus `scripts/seed_demo.py` provide a
+repeatable 19-drug starter dataset for real backend mode. See
+[`docs/demo-seed.md`](docs/demo-seed.md) before running it against Supabase.
 
 ## Environment modes
 
@@ -151,6 +156,7 @@ frontend/src/         React + TypeScript SPA
 docs/
   schema.md           DB design rationale — read before schema changes
   decisions.md        Architectural decisions: what, why, what we passed on
+  demo-seed.md        Real demo seed apply and validation workflow
   plan.md             Active roadmap
 alembic/              Async Alembic env + revisions (source of truth for schema)
 tests/                pytest suites (unit + smoke)
@@ -160,9 +166,8 @@ tests/                pytest suites (unit + smoke)
 
 See [`docs/plan.md`](docs/plan.md) for the full task list. Next up:
 
-- Live demo deployment (TBD between Azure / Fly.io / Render)
-- Expanded seeded drug catalog (~50 real drugs) so the app feels alive on
-  first launch
+- Live demo deployment on Azure Static Web Apps + Azure App Service
+- Expand the seeded drug catalog from the first 19-drug slice toward ~50 drugs
 - `/drugs/search` endpoint backed by the existing `tsvector` index
 - Per-user FSRS weights with a configuration endpoint
 
