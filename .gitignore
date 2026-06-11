@@ -15,6 +15,12 @@ frontend/dist/
 # Alembic generated (keep versions/ but not __pycache__)
 alembic/versions/__pycache__/
 
+# Ingestion pipeline caches and staging output — regenerated on every run.
+# Keep ingestion/drug_list.yaml and other source-controlled inputs.
+data/raw/
+data/staged/
+temp/
+
 # Claude internal
 .claude/
 .notes/

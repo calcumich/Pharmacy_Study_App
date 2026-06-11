@@ -12,28 +12,36 @@ flashcards. SRS state tracks per-user review history.
 
 ### Backend
 
+This project uses **uv** for Python dependency management (decision in `docs/decisions.md`).
+`uv.lock` is committed; do not introduce a `requirements.txt`. Run every backend command
+through `uv run` so the project's virtualenv is used automatically.
+
 ```bash
-# Install dependencies (one-time / after pyproject.toml changes)
-pip install -e ".[dev]"
+# Install / sync dependencies (one-time, and after any pyproject.toml change)
+uv sync --extra dev
 
 # Run the dev server
-uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload
 
 # Run all tests
-pytest
+uv run pytest
 
 # Run a single test file
-pytest tests/test_unit_tree_builder.py
+uv run pytest tests/test_unit_tree_builder.py
 
 # Run a single test by name
-pytest tests/test_unit_tree_builder.py::test_parent_child_nesting
+uv run pytest tests/test_unit_tree_builder.py::test_parent_child_nesting
 
 # Check that ORM models match the DB (should produce empty up/downgrade bodies)
-alembic revision --autogenerate -m "check"
+uv run alembic revision --autogenerate -m "check"
 
 # Apply a new Alembic migration
-alembic upgrade head
+uv run alembic upgrade head
 ```
+
+When working inside a git worktree, run `uv sync --extra dev` **from inside the worktree
+directory** — each worktree gets its own `.venv/` and editable installs point at that
+worktree's code. The shared `uv.lock` keeps resolutions consistent.
 
 Tests in `tests/test_smoke_api.py` hit the real database via `TestClient`; all other test files use `app.dependency_overrides` to mock the DB session — no live DB required.
 

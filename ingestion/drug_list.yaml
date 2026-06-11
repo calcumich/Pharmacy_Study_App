@@ -1,0 +1,303 @@
+# Drug list for the ingestion pipeline.
+#
+# Source: curated from ClinCalc Top 200 (recurring entries across 2021-2023
+# publications) plus high-yield additions (DOACs, GLP-1s, SGLT2s, contraceptives,
+# common psych meds). Compiled without live-scraping (WebFetch was unavailable
+# for clincalc.com at the time), so the order is by clinical grouping rather
+# than prescription rank.
+#
+# Conventions:
+#   - lowercase ASCII only
+#   - generic names (no brands)
+#   - combinations use hyphens between components, alphabetical-ish
+#   - one drug per list entry; deduped
+#
+# Edit freely: re-run `python -m ingestion fetch` after changes.
+drugs:
+  # --- Lipid lowering ---
+  - atorvastatin
+  - rosuvastatin
+  - simvastatin
+  - pravastatin
+  - lovastatin
+  - ezetimibe
+  - fenofibrate
+  - gemfibrozil
+
+  # --- Antihypertensives / cardiovascular ---
+  - lisinopril
+  - benazepril
+  - enalapril
+  - ramipril
+  - losartan
+  - valsartan
+  - irbesartan
+  - olmesartan
+  - candesartan
+  - telmisartan
+  - azilsartan
+  - amlodipine
+  - nifedipine
+  - diltiazem
+  - verapamil
+  - hydralazine
+  - hydrochlorothiazide
+  - chlorthalidone
+  - indapamide
+  - furosemide
+  - torsemide
+  - bumetanide
+  - spironolactone
+  - eplerenone
+  - hydrochlorothiazide-lisinopril
+  - hydrochlorothiazide-losartan
+  - hydrochlorothiazide-triamterene
+  - prazosin
+  - doxazosin
+  - terazosin
+
+  # --- Beta blockers ---
+  - metoprolol
+  - carvedilol
+  - atenolol
+  - propranolol
+  - nebivolol
+  - bisoprolol
+  - labetalol
+  - nadolol
+  - sotalol
+
+  # --- Antiarrhythmics ---
+  - amiodarone
+  - flecainide
+  - digoxin
+
+  # --- Anticoagulants / antiplatelets ---
+  - warfarin
+  - apixaban
+  - rivaroxaban
+  - dabigatran
+  - enoxaparin
+  - clopidogrel
+
+  # --- Nitrates ---
+  - nitroglycerin
+  - isosorbide-mononitrate
+
+  # --- Diabetes ---
+  - metformin
+  - glipizide
+  - glimepiride
+  - glyburide
+  - pioglitazone
+  - sitagliptin
+  - linagliptin
+  - saxagliptin
+  - empagliflozin
+  - dapagliflozin
+  - canagliflozin
+  - liraglutide
+  - dulaglutide
+  - semaglutide
+  - insulin-glargine
+  - insulin-aspart
+  - insulin-lispro
+  - insulin-detemir
+  - insulin-degludec
+
+  # --- Thyroid / endocrine ---
+  - levothyroxine
+  - liothyronine
+  - methimazole
+
+  # --- Respiratory ---
+  - albuterol
+  - albuterol-ipratropium
+  - tiotropium
+  - fluticasone
+  - fluticasone-salmeterol
+  - budesonide-formoterol
+  - montelukast
+  - mometasone
+
+  # --- GI ---
+  - omeprazole
+  - pantoprazole
+  - esomeprazole
+  - lansoprazole
+  - famotidine
+  - sucralfate
+  - metoclopramide
+  - ondansetron
+  - promethazine
+  - dicyclomine
+  - mesalamine
+  - docusate
+  - sennosides
+  - polyethylene-glycol
+  - lactulose
+  - bisacodyl
+
+  # --- Antibiotics / antifungals / antivirals ---
+  - amoxicillin
+  - amoxicillin-clavulanate
+  - azithromycin
+  - cephalexin
+  - ciprofloxacin
+  - levofloxacin
+  - doxycycline
+  - sulfamethoxazole-trimethoprim
+  - metronidazole
+  - nitrofurantoin
+  - fluconazole
+  - terbinafine
+  - nystatin
+  - ketoconazole
+  - clotrimazole-betamethasone
+  - nystatin-triamcinolone
+  - acyclovir
+  - valacyclovir
+  - oseltamivir
+
+  # --- Antidepressants ---
+  - sertraline
+  - escitalopram
+  - citalopram
+  - fluoxetine
+  - paroxetine
+  - duloxetine
+  - venlafaxine
+  - desvenlafaxine
+  - vilazodone
+  - bupropion
+  - mirtazapine
+  - trazodone
+  - amitriptyline
+  - nortriptyline
+
+  # --- Anxiolytics / hypnotics ---
+  - alprazolam
+  - lorazepam
+  - clonazepam
+  - diazepam
+  - buspirone
+  - zolpidem
+  - hydroxyzine
+
+  # --- Antipsychotics / mood stabilizers ---
+  - aripiprazole
+  - quetiapine
+  - risperidone
+  - olanzapine
+  - ziprasidone
+  - haloperidol
+  - lithium
+  - divalproex
+  - lamotrigine
+
+  # --- Anticonvulsants ---
+  - gabapentin
+  - levetiracetam
+  - topiramate
+  - oxcarbazepine
+  - phenytoin
+  - carbamazepine
+
+  # --- ADHD / wake-promoting ---
+  - methylphenidate
+  - amphetamine-dextroamphetamine
+  - lisdexamfetamine
+  - atomoxetine
+  - guanfacine
+  - modafinil
+
+  # --- Neurodegenerative / movement ---
+  - carbidopa-levodopa
+  - donepezil
+  - memantine
+  - rivastigmine
+  - ropinirole
+  - pramipexole
+  - benztropine
+  - trihexyphenidyl
+
+  # --- Pain / NSAIDs / opioids / muscle relaxants ---
+  - acetaminophen-hydrocodone
+  - acetaminophen-oxycodone
+  - acetaminophen-codeine
+  - oxycodone
+  - tramadol
+  - ibuprofen
+  - naproxen
+  - meloxicam
+  - diclofenac
+  - celecoxib
+  - cyclobenzaprine
+  - methocarbamol
+  - tizanidine
+
+  # --- Migraine ---
+  - sumatriptan
+
+  # --- Urology / BPH / ED ---
+  - tamsulosin
+  - finasteride
+  - solifenacin
+  - oxybutynin
+  - mirabegron
+  - tadalafil
+  - sildenafil
+
+  # --- Hormones / contraception / bone ---
+  - testosterone
+  - estradiol
+  - medroxyprogesterone
+  - conjugated-estrogens
+  - raloxifene
+  - alendronate
+  - desogestrel-ethinyl-estradiol
+  - norethindrone-ethinyl-estradiol
+  - norgestimate-ethinyl-estradiol
+  - drospirenone-ethinyl-estradiol
+  - levonorgestrel-ethinyl-estradiol
+
+  # --- Dermatology / topical steroids ---
+  - triamcinolone
+  - hydrocortisone
+  - clobetasol
+  - mupirocin
+
+  # --- Systemic steroids ---
+  - prednisone
+  - prednisolone
+  - methylprednisolone
+  - dexamethasone
+
+  # --- Allergy / antihistamines ---
+  - loratadine
+  - fexofenadine
+  - cetirizine
+  - diphenhydramine
+
+  # --- Vitamins / electrolytes / supplements ---
+  - ergocalciferol
+  - calcitriol
+  - cyanocobalamin
+  - folic-acid
+  - ferrous-sulfate
+  - potassium-chloride
+
+  # --- Rheumatology / immunology ---
+  - allopurinol
+  - methotrexate
+  - hydroxychloroquine
+
+  # --- Substance use / smoking cessation ---
+  - buprenorphine-naloxone
+  - naltrexone
+  - varenicline
+  - nicotine
+
+  # --- Misc CNS ---
+  - dronabinol
+  - clonidine
