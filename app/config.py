@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_JWT_SECRET: str = ""
     CORS_ORIGINS: str = "http://localhost:5173"
+    OPENFDA_API_KEY: str = ""
 
     model_config = {
         "env_file": ".env",

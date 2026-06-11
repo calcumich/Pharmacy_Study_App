@@ -339,6 +339,66 @@ status + message body), `frontend/src/App.tsx`, `FlashcardView.tsx`.
 
 ---
 
+### [ ] 21. Empty intermediate drug class categories
+
+**Goal:** Clicking a mid-level class (e.g. "Endocrine Therapy") shows no drugs
+even though child classes below it (e.g. "Estrogens", "Progestogens") do have
+drugs. The browser renders the empty state rather than signalling that the
+category is a container, not a leaf.
+
+**Context:**
+- `GET /drug-classes/{id}/drugs` returns drugs whose `drug_class_id` matches
+  the given class exactly. It does not walk descendant classes.
+- The recursive CTE pattern for hierarchy traversal is already documented in
+  `CLAUDE.md` (`docs/schema.md`). The endpoint needs to use it so that
+  selecting a parent class returns all drugs in its subtree.
+- Alternatively (or additionally) the frontend could suppress the empty state
+  by listing child classes inline when a category has no direct drugs — but
+  fixing the API is the cleaner fix.
+
+**Steps:**
+1. Update `GET /drug-classes/{id}/drugs` in `app/routers/drug_classes.py` to
+   use a recursive CTE that traverses the full descendant subtree before
+   filtering drugs. Return the same `DrugSummary` shape.
+2. Add a unit test confirming that querying a parent class returns drugs from
+   descendant classes, not just direct children.
+
+**Files to touch:** `app/routers/drug_classes.py`, `tests/test_unit_*.py` (new
+or extended).
+
+---
+
+### [ ] 22. Walls of text in flashcard content
+
+**Goal:** Some flashcard backs render a full SPL prose paragraph (several
+hundred words) instead of a concise, study-friendly answer. Flashcard content
+should be scannable in a few seconds.
+
+**Context:**
+- The ingestion pipeline stores full extracted prose in `drugs.attributes`
+  (JSONB) and in the list-shape tables (`drug_indications`, `drug_adrs`,
+  `drug_metabolism`). List-shape rows are already sentence-level — those are
+  fine. The problem is the scalar fields: `mechanism_of_action`,
+  `pharmacokinetics`, `dosing`, `drug_interactions_text`.
+- The display layer in `FlashcardView.tsx` renders these fields verbatim.
+- Two complementary fixes: (a) truncate at display time with a "show more"
+  toggle, and/or (b) tighten the `_scalar()` extraction in
+  `ingestion/extract/sections.py` so it keeps only the first meaningful
+  sentence or a hard character cap.
+
+**Steps:**
+1. In `FlashcardView.tsx`, cap scalar text fields at ~300 characters with a
+   "Show full text" disclosure toggle below the truncated version.
+2. Optionally, in `ingestion/extract/sections.py::_scalar`, add a sentence
+   splitter that returns the first 1–3 sentences rather than the full prose
+   block. Re-run the pipeline against the existing drug list and inspect the
+   preview report.
+
+**Files to touch:** `frontend/src/components/FlashcardView.tsx`;
+optionally `ingestion/extract/sections.py`.
+
+---
+
 ## Phase 5 — Quality of life (was Phase 4)
 
 ### [ ] 15. Drug data ingestion pipeline
