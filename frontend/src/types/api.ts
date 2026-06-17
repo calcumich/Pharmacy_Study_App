@@ -3,6 +3,8 @@ export interface DrugClassNode {
   name: string;
   slug: string;
   description?: string;
+  direct_drug_count: number;
+  descendant_drug_count: number;
   children: DrugClassNode[];
 }
 

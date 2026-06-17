@@ -655,3 +655,22 @@ of the README.
 screenshots show an empty app.
 
 **Files to touch:** `docs/media/` (new), `README.md`.
+
+---
+
+## Phase 7 — Admin tooling (TBD)
+
+### [ ] 23. Admin panel
+
+**Goal:** A protected admin interface for managing app content and users.
+Functionality is not yet defined — this is a placeholder to track the intent.
+
+**Ideas to consider (nothing decided):**
+- Drug / drug-class CRUD without direct DB access
+- Ingestion pipeline trigger / status view
+- User management (view, disable accounts)
+- Review history inspection or manual SRS reset
+
+**Notes:** Scope, tech approach (dedicated route in the React app, separate
+admin SPA, or backend-rendered), and access-control model are all TBD. Define
+requirements before breaking this into subtasks.

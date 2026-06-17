@@ -46,12 +46,16 @@ const DRUG_CLASSES: DrugClassNode[] = [
     name: 'Cardiovascular',
     slug: 'cardiovascular',
     description: 'Drugs acting on the heart and vasculature',
+    direct_drug_count: 0,
+    descendant_drug_count: 6,
     children: [
       {
         id: ID.betaBlockers,
         name: 'Beta-Blockers',
         slug: 'beta-blockers',
         description: 'Competitive antagonists of β-adrenoceptors',
+        direct_drug_count: 3,
+        descendant_drug_count: 3,
         children: [],
       },
       {
@@ -59,6 +63,8 @@ const DRUG_CLASSES: DrugClassNode[] = [
         name: 'ACE Inhibitors',
         slug: 'ace-inhibitors',
         description: 'Inhibit angiotensin-converting enzyme',
+        direct_drug_count: 2,
+        descendant_drug_count: 2,
         children: [],
       },
       {
@@ -66,6 +72,8 @@ const DRUG_CLASSES: DrugClassNode[] = [
         name: 'Statins',
         slug: 'statins',
         description: 'HMG-CoA reductase inhibitors',
+        direct_drug_count: 1,
+        descendant_drug_count: 1,
         children: [],
       },
     ],
@@ -75,18 +83,24 @@ const DRUG_CLASSES: DrugClassNode[] = [
     name: 'Antibiotics',
     slug: 'antibiotics',
     description: 'Antimicrobial agents',
+    direct_drug_count: 0,
+    descendant_drug_count: 1,
     children: [
       {
         id: ID.betaLactams,
         name: 'Beta-Lactams',
         slug: 'beta-lactams',
         description: 'Contain a β-lactam ring; inhibit cell-wall synthesis',
+        direct_drug_count: 0,
+        descendant_drug_count: 1,
         children: [
           {
             id: ID.penicillins,
             name: 'Penicillins',
             slug: 'penicillins',
             description: 'Natural and semi-synthetic penicillin derivatives',
+            direct_drug_count: 1,
+            descendant_drug_count: 1,
             children: [],
           },
         ],

@@ -122,6 +122,14 @@ Useful for UI work and the demo path.
 repeatable 19-drug starter dataset for real backend mode. See
 [`docs/demo-seed.md`](docs/demo-seed.md) before running it against Supabase.
 
+**Drug-class diagnostics.** The class browser hides `drug_classes` with zero
+descendant drugs. To audit hidden taxonomy branches against the current DB, run:
+`uv run python scripts/report_empty_drug_classes.py`.
+
+**Ingestion pipeline.** See [`docs/ingestion.md`](docs/ingestion.md) for the
+current RxNorm/RxClass/openFDA flow, why empty classes can exist, and catalog
+expansion options.
+
 ## Environment modes
 
 **Production/staging.** Use Supabase Cloud Auth and Supabase Cloud Postgres.

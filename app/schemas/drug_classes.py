@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DrugClassNode(BaseModel):
@@ -8,6 +8,8 @@ class DrugClassNode(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
-    children: list["DrugClassNode"] = []
+    direct_drug_count: int = 0
+    descendant_drug_count: int = 0
+    children: list["DrugClassNode"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

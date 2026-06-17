@@ -36,14 +36,18 @@ def _make_class(
     return obj
 
 
-def _db_override(classes: list[DrugClass]):
+def _db_override(classes: list[DrugClass], direct_counts: dict[uuid.UUID, int] | None = None):
     """Return a get_db override that yields a mock session returning *classes*."""
+    if direct_counts is None:
+        direct_counts = {c.id: 1 for c in classes}
 
     async def override():
-        result = MagicMock()
-        result.scalars.return_value.all.return_value = classes
+        class_result = MagicMock()
+        class_result.scalars.return_value.all.return_value = classes
+        count_result = MagicMock()
+        count_result.all.return_value = list(direct_counts.items())
         mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=result)
+        mock_db.execute = AsyncMock(side_effect=[class_result, count_result])
         yield mock_db
 
     return override
@@ -79,6 +83,8 @@ def test_single_root_no_children():
     assert len(tree) == 1
     assert tree[0]["id"] == str(root_id)
     assert tree[0]["name"] == "Antibiotics"
+    assert tree[0]["direct_drug_count"] == 1
+    assert tree[0]["descendant_drug_count"] == 1
     assert tree[0]["children"] == []
 
 
@@ -167,3 +173,45 @@ def test_null_description_is_none_in_response():
     with TestClient(app) as client:
         resp = client.get("/drug-classes")
     assert resp.json()[0]["description"] is None
+
+
+def test_empty_leaf_is_filtered():
+    app.dependency_overrides[get_db] = _db_override([
+        _make_class(name="Antibiotics", slug="antibiotics"),
+    ], direct_counts={})
+    with TestClient(app) as client:
+        resp = client.get("/drug-classes")
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_empty_parent_kept_when_descendant_has_drugs():
+    root_id = uuid.uuid4()
+    child_id = uuid.uuid4()
+    app.dependency_overrides[get_db] = _db_override([
+        _make_class(name="Antibiotics", slug="antibiotics", id=root_id),
+        _make_class(name="Penicillins", slug="penicillins", parent_id=root_id, id=child_id),
+    ], direct_counts={child_id: 3})
+    with TestClient(app) as client:
+        resp = client.get("/drug-classes")
+    assert resp.status_code == 200
+    tree = resp.json()
+    assert len(tree) == 1
+    assert tree[0]["direct_drug_count"] == 0
+    assert tree[0]["descendant_drug_count"] == 3
+    assert tree[0]["children"][0]["id"] == str(child_id)
+    assert tree[0]["children"][0]["direct_drug_count"] == 3
+    assert tree[0]["children"][0]["descendant_drug_count"] == 3
+
+
+def test_empty_parent_branch_is_filtered():
+    root_id = uuid.uuid4()
+    child_id = uuid.uuid4()
+    app.dependency_overrides[get_db] = _db_override([
+        _make_class(name="Antibiotics", slug="antibiotics", id=root_id),
+        _make_class(name="Penicillins", slug="penicillins", parent_id=root_id, id=child_id),
+    ], direct_counts={})
+    with TestClient(app) as client:
+        resp = client.get("/drug-classes")
+    assert resp.status_code == 200
+    assert resp.json() == []

@@ -25,3 +25,5 @@ temp/
 .claude/
 .notes/
 .superpowers/
+
+reports/*
